@@ -1,0 +1,156 @@
+{
+  "Copper": {
+    "commodity": "Copper",
+    "unit": "USD/lb",
+    "inventory_categories": [
+      "Electronics",
+      "Wiring",
+      "Cables"
+    ],
+    "fetched_at": "2026-06-29T10:08:34.526505",
+    "ticker_used": "HG=F",
+    "current_price": 6.171500205993652,
+    "previous_close": 6.141499996185303,
+    "change_pct": 0.4885,
+    "volume": 9118.0,
+    "1y_low": 4.3305,
+    "1y_high": 6.6495,
+    "1y_avg": 5.471,
+    "1y_std_dev": 0.6059,
+    "percentile_rank": 79.39,
+    "data_points": 252
+  },
+  "Steel": {
+    "commodity": "Steel",
+    "unit": "USD",
+    "inventory_categories": [
+      "Hardware",
+      "Construction",
+      "Outdoor",
+      "Indoor/Outdoor Games"
+    ],
+    "fetched_at": "2026-06-29T10:08:37.323908",
+    "ticker_used": "SLX",
+    "current_price": 99.13999938964844,
+    "previous_close": 101.05000305175781,
+    "change_pct": -1.8902,
+    "volume": 33200.0,
+    "1y_low": 66.16,
+    "1y_high": 113.57,
+    "1y_avg": 86.4594,
+    "1y_std_dev": 13.6686,
+    "percentile_rank": 69.56,
+    "data_points": 251
+  },
+  "Aluminum": {
+    "commodity": "Aluminum",
+    "unit": "USD/tonne",
+    "inventory_categories": [
+      "Sports",
+      "Outdoors"
+    ],
+    "fetched_at": "2026-06-29T10:08:39.935792",
+    "ticker_used": "ALI=F",
+    "current_price": 3288.0,
+    "previous_close": 3697.5,
+    "change_pct": -11.0751,
+    "volume": 4.0,
+    "1y_low": 2427.0,
+    "1y_high": 4195.0,
+    "1y_avg": 3010.1155,
+    "1y_std_dev": 460.4297,
+    "percentile_rank": 48.7,
+    "data_points": 251
+  },
+  "Crude Oil / Diesel": {
+    "commodity": "Crude Oil / Diesel",
+    "unit": "USD/barrel",
+    "inventory_categories": [
+      "Logistics",
+      "Transportation"
+    ],
+    "fetched_at": "2026-06-29T10:08:42.380087",
+    "ticker_used": "CL=F",
+    "current_price": 70.5999984741211,
+    "previous_close": 69.2300033569336,
+    "change_pct": 1.9789,
+    "volume": 40967.0,
+    "1y_low": 55.27,
+    "1y_high": 112.95,
+    "1y_avg": 72.1623,
+    "1y_std_dev": 15.7043,
+    "percentile_rank": 26.58,
+    "data_points": 252
+  },
+  "Gold": {
+    "commodity": "Gold",
+    "unit": "USD/oz",
+    "inventory_categories": [
+      "Jewelry",
+      "Accessories"
+    ],
+    "fetched_at": "2026-06-29T10:08:45.123536",
+    "ticker_used": "GC=F",
+    "current_price": 4041.10009765625,
+    "previous_close": 4078.699951171875,
+    "change_pct": -0.9219,
+    "volume": 43049.0,
+    "1y_low": 3293.2,
+    "1y_high": 5318.3999,
+    "1y_avg": 4231.227,
+    "1y_std_dev": 567.2027,
+    "percentile_rank": 36.93,
+    "data_points": 252
+  },
+  "Cotton": {
+    "commodity": "Cotton",
+    "unit": "USD/lb",
+    "inventory_categories": [
+      "Apparel",
+      "Women's Apparel",
+      "Men's Apparel",
+      "Clothing",
+      "Women's Clothing",
+      "Men's Clothing",
+      "Footwear",
+      "Men's Footwear",
+      "Cleats",
+      "Kids",
+      "Women's Footwear"
+    ],
+    "fetched_at": "2026-06-29T10:08:47.919149",
+    "ticker_used": "CT=F",
+    "current_price": 77.19000244140625,
+    "previous_close": 71.66000366210938,
+    "change_pct": 7.717,
+    "volume": 5660.0,
+    "1y_low": 61.06,
+    "1y_high": 87.77,
+    "1y_avg": 67.5455,
+    "1y_std_dev": 5.9127,
+    "percentile_rank": 60.39,
+    "data_points": 252
+  },
+  "Rubber": {
+    "commodity": "Rubber",
+    "unit": "USD",
+    "inventory_categories": [
+      "Shoes",
+      "Athletic Wear",
+      "Fan Shop",
+      "Fitness"
+    ],
+    "fetched_at": "2026-06-29T10:08:55.961266",
+    "ticker_used": "NTR",
+    "current_price": 60.97999954223633,
+    "previous_close": 60.959999084472656,
+    "change_pct": 0.0328,
+    "volume": 2493100.0,
+    "1y_low": 53.64,
+    "1y_high": 83.94,
+    "1y_avg": 64.4397,
+    "1y_std_dev": 7.1812,
+    "percentile_rank": 24.22,
+    "data_points": 251
+  }
+}

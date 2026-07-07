@@ -1,0 +1,89 @@
+# === Secrets & Credentials ===
+.env
+*.env
+.env.*
+!.env.example
+secrets/
+config/credentials.*
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+
+# === Virtual Environments ===
+venv/
+.venv/
+env/
+ENV/
+
+# === Model Checkpoints & Large Artifacts ===
+models/*.ckpt
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.safetensors
+
+# === MLflow & Experiment Tracking ===
+mlruns/
+mlflow.db
+mlartifacts/
+
+# === Logs ===
+*.log
+logs/
+lightning_logs/
+
+# === Raw Data (large files) ===
+data/*.csv
+data/*.parquet
+data/*.xlsx
+data/*.json.gz
+*.parquet
+*.feather
+datasets/raw/
+datasets/**/*.csv
+datasets/**/*.parquet
+
+# === Node / Frontend ===
+node_modules/
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# === Jupyter ===
+.ipynb_checkpoints/
+*.ipynb
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Docker overrides ===
+docker-compose.override.yml
+
+# === Misc ===
+*.tmp
+*.swp
+~$*
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+.coverage
+htmlcov/
+
+# === Reports / generated artifacts ===
+reports/*.png
+reports/*.pdf
+
+# === Scripts output ===
+scripts/__pycache__/

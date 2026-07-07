@@ -1,0 +1,149 @@
+[
+  {
+    "commodity": "Copper",
+    "signal": "WAIT",
+    "severity": "MEDIUM",
+    "current_price": 6.1715,
+    "price_unit": "USD/lb",
+    "change_pct_today": 0.4885,
+    "percentile_rank": 79.39,
+    "1y_low": 4.3305,
+    "1y_high": 6.6495,
+    "reasoning": "Copper is in the upper range of its 1-year band (percentile 79.4). Better value expected soon.",
+    "affected_inventory_categories": [
+      "Electronics",
+      "Wiring",
+      "Cables"
+    ],
+    "potential_savings_pct": -12.8,
+    "alert_required": false,
+    "analyzed_at": "2026-06-29T10:08:56.210736"
+  },
+  {
+    "commodity": "Steel",
+    "signal": "BUY",
+    "severity": "HIGH",
+    "current_price": 99.14,
+    "price_unit": "USD",
+    "change_pct_today": -1.8902,
+    "percentile_rank": 69.56,
+    "1y_low": 66.16,
+    "1y_high": 113.57,
+    "reasoning": "Steel dropped 1.89% today. A single-day dip of this size may present a short-term buying opportunity.",
+    "affected_inventory_categories": [
+      "Hardware",
+      "Construction",
+      "Outdoor",
+      "Indoor/Outdoor Games"
+    ],
+    "potential_savings_pct": -14.67,
+    "alert_required": true,
+    "analyzed_at": "2026-06-29T10:08:56.210879"
+  },
+  {
+    "commodity": "Aluminum",
+    "signal": "BUY",
+    "severity": "HIGH",
+    "current_price": 3288.0,
+    "price_unit": "USD/tonne",
+    "change_pct_today": -11.0751,
+    "percentile_rank": 48.7,
+    "1y_low": 2427.0,
+    "1y_high": 4195.0,
+    "reasoning": "Aluminum dropped 11.08% today. A single-day dip of this size may present a short-term buying opportunity.",
+    "affected_inventory_categories": [
+      "Sports",
+      "Outdoors"
+    ],
+    "potential_savings_pct": -9.23,
+    "alert_required": true,
+    "analyzed_at": "2026-06-29T10:08:56.211011"
+  },
+  {
+    "commodity": "Crude Oil / Diesel",
+    "signal": "HOLD",
+    "severity": "LOW",
+    "current_price": 70.6,
+    "price_unit": "USD/barrel",
+    "change_pct_today": 1.9789,
+    "percentile_rank": 26.58,
+    "1y_low": 55.27,
+    "1y_high": 112.95,
+    "reasoning": "Crude Oil / Diesel is trading in its mid-range (percentile 26.6 of 1-year). No urgent action required \u2014 maintain current stock levels.",
+    "affected_inventory_categories": [
+      "Logistics",
+      "Transportation"
+    ],
+    "potential_savings_pct": 2.16,
+    "alert_required": false,
+    "analyzed_at": "2026-06-29T10:08:56.211117"
+  },
+  {
+    "commodity": "Gold",
+    "signal": "HOLD",
+    "severity": "LOW",
+    "current_price": 4041.1001,
+    "price_unit": "USD/oz",
+    "change_pct_today": -0.9219,
+    "percentile_rank": 36.93,
+    "1y_low": 3293.2,
+    "1y_high": 5318.3999,
+    "reasoning": "Gold is trading in its mid-range (percentile 36.9 of 1-year). No urgent action required \u2014 maintain current stock levels.",
+    "affected_inventory_categories": [
+      "Jewelry",
+      "Accessories"
+    ],
+    "potential_savings_pct": 4.49,
+    "alert_required": false,
+    "analyzed_at": "2026-06-29T10:08:56.211226"
+  },
+  {
+    "commodity": "Cotton",
+    "signal": "WAIT",
+    "severity": "MEDIUM",
+    "current_price": 77.19,
+    "price_unit": "USD/lb",
+    "change_pct_today": 7.717,
+    "percentile_rank": 60.39,
+    "1y_low": 61.06,
+    "1y_high": 87.77,
+    "reasoning": "Cotton is spiking today (+7.72%). Wait for the price to stabilise before placing orders.",
+    "affected_inventory_categories": [
+      "Apparel",
+      "Women's Apparel",
+      "Men's Apparel",
+      "Clothing",
+      "Women's Clothing",
+      "Men's Clothing",
+      "Footwear",
+      "Men's Footwear",
+      "Cleats",
+      "Kids",
+      "Women's Footwear"
+    ],
+    "potential_savings_pct": -14.28,
+    "alert_required": false,
+    "analyzed_at": "2026-06-29T10:08:56.211332"
+  },
+  {
+    "commodity": "Rubber",
+    "signal": "BUY",
+    "severity": "HIGH",
+    "current_price": 60.98,
+    "price_unit": "USD",
+    "change_pct_today": 0.0328,
+    "percentile_rank": 24.22,
+    "1y_low": 53.64,
+    "1y_high": 83.94,
+    "reasoning": "Rubber is in the bottom 24.2th percentile of its 1-year price range. Prices are historically low. Consider building inventory now.",
+    "affected_inventory_categories": [
+      "Shoes",
+      "Athletic Wear",
+      "Fan Shop",
+      "Fitness"
+    ],
+    "potential_savings_pct": 5.37,
+    "alert_required": true,
+    "analyzed_at": "2026-06-29T10:08:56.211435"
+  }
+]

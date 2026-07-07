@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supplysense-api
+  namespace: supplysense
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: supplysense-api
+  template:
+    metadata:
+      labels:
+        app: supplysense-api
+    spec:
+      containers:
+      - name: supplysense-api
+        image: supplysense-backend:latest
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: supplysense-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supplysense-api-service
+  namespace: supplysense
+spec:
+  selector:
+    app: supplysense-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: supplysense-api-hpa
+  namespace: supplysense
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: supplysense-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

@@ -1,0 +1,51 @@
+# ============================================================
+# SupplySense API — Multi-stage FastAPI Dockerfile
+# ============================================================
+
+# ── Stage 1: Base image with uv ─────────────────────────────
+FROM python:3.11-slim AS base
+WORKDIR /app
+
+# Install uv (fast pip replacement)
+RUN pip install --no-cache-dir uv
+
+# ── Stage 2: Install dependencies ───────────────────────────
+FROM base AS deps
+
+# Copy requirements first for layer caching
+COPY apps/api/requirements.txt ./requirements.txt
+
+# Install all Python deps system-wide via uv
+RUN uv pip install --system --no-cache -r requirements.txt
+
+# ── Stage 3: Production runner ───────────────────────────────
+FROM deps AS runner
+WORKDIR /app
+
+# Copy application source
+COPY apps/api/ ./apps/api/
+COPY packages/  ./packages/
+
+# Create non-root user
+RUN groupadd --system --gid 1001 appgroup && \
+    useradd  --system --uid 1001 --gid appgroup appuser
+
+# Set Python env vars
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+USER appuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+CMD ["uvicorn", "apps.api.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--loop", "uvloop", \
+     "--http", "httptools", \
+     "--access-log"]

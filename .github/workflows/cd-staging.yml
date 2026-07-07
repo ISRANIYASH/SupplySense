@@ -1,0 +1,324 @@
+# ============================================================
+# GitHub Actions — Continuous Deployment to Staging
+# Triggers on push to `develop` branch
+# ============================================================
+name: CD — Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: false
+        default: ""
+
+env:
+  AWS_REGION:      us-east-1
+  ECR_REGISTRY:    ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  K8S_NAMESPACE:   supplysense-staging
+  HELM_VERSION:    3.14.0
+
+concurrency:
+  group: cd-staging
+  cancel-in-progress: false   # Never cancel a running deploy
+
+jobs:
+  # ── Determine Image Tag ──────────────────────────────────────
+  setup:
+    name: "Setup — Determine tag"
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Determine image tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Build & Push to ECR ──────────────────────────────────────
+  build-and-push:
+    name: "Build & Push Docker Images to ECR"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: setup
+
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: "8"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js
+        run: pnpm --filter=@supplysense/web build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_API_URL:     ${{ secrets.STAGING_API_URL }}
+          NEXT_PUBLIC_WS_URL:      ${{ secrets.STAGING_WS_URL }}
+
+      - name: Build & push Web image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file:    infra/docker/Dockerfile.web
+          push:    true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/supplysense-web:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/supplysense-web:staging-latest
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+          labels: |
+            git.commit=${{ github.sha }}
+            git.branch=${{ github.ref_name }}
+            build.date=${{ github.event.head_commit.timestamp }}
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file:    infra/docker/Dockerfile.api
+          push:    true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/supplysense-api:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/supplysense-api:staging-latest
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      - name: Build & push ML image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file:    infra/docker/Dockerfile.ml
+          push:    true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/supplysense-ml:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/supplysense-ml:staging-latest
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+  # ── Deploy to Kubernetes Staging ─────────────────────────────
+  deploy-staging:
+    name: "Deploy — Kubernetes Staging Namespace"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [setup, build-and-push]
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_URL }}
+
+    env:
+      IMAGE_TAG: ${{ needs.setup.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name supplysense-staging \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Ensure staging namespace
+        run: |
+          kubectl get namespace ${{ env.K8S_NAMESPACE }} \
+            || kubectl create namespace ${{ env.K8S_NAMESPACE }}
+
+      - name: Deploy supplysense-web (Helm)
+        run: |
+          helm upgrade --install supplysense-web \
+            infra/helm/supplysense-web \
+            --namespace ${{ env.K8S_NAMESPACE }} \
+            --set image.repository=${{ env.ECR_REGISTRY }}/supplysense-web \
+            --set image.tag=${{ env.IMAGE_TAG }} \
+            --set ingress.hosts[0].host=staging.supplysense.io \
+            --set env.NEXT_PUBLIC_API_URL=${{ secrets.STAGING_API_URL }} \
+            --set env.NEXT_PUBLIC_WS_URL=${{ secrets.STAGING_WS_URL }} \
+            --wait \
+            --timeout 5m \
+            --atomic
+
+      - name: Deploy supplysense-api (Helm)
+        run: |
+          helm upgrade --install supplysense-api \
+            infra/helm/supplysense-api \
+            --namespace ${{ env.K8S_NAMESPACE }} \
+            --set image.repository=${{ env.ECR_REGISTRY }}/supplysense-api \
+            --set image.tag=${{ env.IMAGE_TAG }} \
+            --set env.DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }} \
+            --set env.REDIS_URL=${{ secrets.STAGING_REDIS_URL }} \
+            --set env.SECRET_KEY=${{ secrets.STAGING_SECRET_KEY }} \
+            --set env.OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --wait \
+            --timeout 5m \
+            --atomic
+
+      - name: Deploy supplysense-ml (Helm)
+        run: |
+          helm upgrade --install supplysense-ml \
+            infra/helm/supplysense-ml \
+            --namespace ${{ env.K8S_NAMESPACE }} \
+            --set image.repository=${{ env.ECR_REGISTRY }}/supplysense-ml \
+            --set image.tag=${{ env.IMAGE_TAG }} \
+            --set env.MLFLOW_TRACKING_URI=${{ secrets.STAGING_MLFLOW_URI }} \
+            --wait \
+            --timeout 10m \
+            --atomic
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/supplysense-web \
+            -n ${{ env.K8S_NAMESPACE }} --timeout=120s
+          kubectl rollout status deployment/supplysense-api \
+            -n ${{ env.K8S_NAMESPACE }} --timeout=120s
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+
+      - name: Run smoke tests
+        run: |
+          STAGING_URL="${{ secrets.STAGING_URL }}"
+          echo "Running smoke tests against $STAGING_URL"
+
+          # Health check API
+          curl -sf "$STAGING_URL/api/health" \
+            | jq '.status == "ok"' \
+            || (echo "API health check failed" && exit 1)
+
+          # Health check Web
+          curl -sf "$STAGING_URL" -o /dev/null -w "%{http_code}" \
+            | grep -q "200" \
+            || (echo "Web health check failed" && exit 1)
+
+          echo "All smoke tests passed!"
+
+      - name: Notify Slack on success
+        if: success()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "✅ *Staging Deploy Succeeded*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "✅ *SupplySense Staging Deploy Succeeded*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Actor:* ${{ github.actor }}\n*URL:* ${{ secrets.STAGING_URL }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL:  ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "❌ *Staging Deploy FAILED*",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "❌ *SupplySense Staging Deploy FAILED*\n*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Actor:* ${{ github.actor }}\n*Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL:  ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  # ── Database Migrations ──────────────────────────────────────
+  run-migrations:
+    name: "Migrations — Apply DB migrations"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: deploy-staging
+    if: success()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+            --name supplysense-staging \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Run Alembic migrations
+        run: |
+          kubectl run migration-${{ github.run_id }} \
+            --image=${{ env.ECR_REGISTRY }}/supplysense-api:${{ needs.setup.outputs.image_tag }} \
+            --namespace=${{ env.K8S_NAMESPACE }} \
+            --restart=Never \
+            --env="DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}" \
+            --command -- python -m alembic upgrade head
+          
+          kubectl wait pod/migration-${{ github.run_id }} \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --for=condition=Ready \
+            --timeout=60s || true
+          
+          kubectl logs migration-${{ github.run_id }} \
+            -n ${{ env.K8S_NAMESPACE }}
+          
+          kubectl delete pod migration-${{ github.run_id }} \
+            -n ${{ env.K8S_NAMESPACE }} --ignore-not-found=true

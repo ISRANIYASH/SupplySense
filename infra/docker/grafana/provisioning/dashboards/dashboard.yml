@@ -1,0 +1,26 @@
+# ============================================================
+# Grafana Dashboard Provisioning Config
+# ============================================================
+apiVersion: 1
+
+providers:
+  - name:            SupplySense Dashboards
+    orgId:           1
+    type:            file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates:  true
+    options:
+      path:          /var/lib/grafana/dashboards
+      foldersFromFilesStructure: true
+
+  - name:            SupplySense Overview
+    orgId:           1
+    folder:          SupplySense
+    folderUid:       supplysense
+    type:            file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates:  true
+    options:
+      path:          /var/lib/grafana/dashboards/supplysense
