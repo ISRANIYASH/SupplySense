@@ -1,0 +1,8 @@
+{
+  "test_mape": 46.6971,
+  "test_mae": 2.346,
+  "test_rmse": 4.4453,
+  "trained_on": "multi-series 241 groups (36584 rows)",
+  "model_type": "TFT",
+  "mlflow_run_id": "f73ca9f8fcf04af4aa6fdbd2a581abe5"
+}

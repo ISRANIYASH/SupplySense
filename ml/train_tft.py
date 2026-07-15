@@ -78,12 +78,22 @@ def train_tft():
         print("\nStarting training...")
         trainer.fit(tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
 
-        # Load best checkpoint
+        # Load best checkpoint — PyTorch 2.6+ requires allowlisting custom globals
         best_ckpt = checkpoint_cb.best_model_path or ""
         if best_ckpt and os.path.exists(best_ckpt):
             print(f"\nLoading best checkpoint: {best_ckpt}")
-            best_tft = TemporalFusionTransformer.load_from_checkpoint(best_ckpt)
+            try:
+                from pytorch_forecasting.data.encoders import GroupNormalizer
+                from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
+                import torch.serialization as ts
+                # Allowlist pytorch_forecasting globals for safe unpickling
+                ts.add_safe_globals([GroupNormalizer, TimeSeriesDataSet])
+                best_tft = TemporalFusionTransformer.load_from_checkpoint(best_ckpt)
+            except Exception as e:
+                print(f"Checkpoint load failed ({e}), using in-memory trained model.")
+                best_tft = tft
         else:
+            print("No checkpoint found, using in-memory trained model.")
             best_tft = tft
         best_tft.eval()
 

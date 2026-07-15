@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
 import {
   AreaChart, Area, BarChart, Bar,
@@ -12,6 +13,18 @@ import {
   AlertTriangle, CheckCircle2, DollarSign, Users,
   MapPin, Tag, RefreshCw, Wifi,
 } from 'lucide-react'
+
+const SupplyChainMap = dynamic(
+  () => import('@/components/maps/SupplyChainMap'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full flex items-center justify-center text-slate-500" style={{ minHeight: 280 }}>
+        Loading map...
+      </div>
+    ),
+  }
+)
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -213,6 +226,24 @@ export default function ControlTowerPage() {
           </GlassCard>
         </motion.div>
       </div>
+
+      {/* Warehouse Map */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }} style={{ marginBottom: 20 }}>
+        <GlassCard style={{ padding: 24 }}>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h3 style={{ color: C.textPrimary, fontSize: 15, fontWeight: 600, margin: 0 }}>Warehouse Network</h3>
+              <p style={{ color: C.textMuted, fontSize: 12, margin: '4px 0 0' }}>6 warehouses across India with stock levels</p>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: C.success, background: `${C.success}18`, padding: '2px 8px', borderRadius: 4 }}>
+              LIVE
+            </span>
+          </div>
+          <div style={{ height: 280, borderRadius: 8, overflow: 'hidden' }}>
+            <SupplyChainMap showRoutes={false} height="280px" zoom={5} />
+          </div>
+        </GlassCard>
+      </motion.div>
 
       {/* Charts Row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
