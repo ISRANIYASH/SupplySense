@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SupplySense 🧠⚡
 
 > **Autonomous AI Supply Chain Operating System** — Observe → Forecast → Analyze → Decide → Recommend → Act → Monitor → Learn → Retrain
@@ -242,3 +243,7 @@ helm upgrade --install supplysense ./infra/helm/supplysense \
 ## 📝 License
 
 MIT — See [LICENSE](./LICENSE)
+=======
+# SupplySense
+ML-powered supply chain demand forecasting platform comparing LSTM vs Temporal Fusion Transformer (TFT) models across 241 product series. Includes MLflow experiment tracking, quantile-based probabilistic forecasts, and a Dockerized PostgreSQL backend. Built for reproducible, production-style ML pipelines.
+>>>>>>> f507f296bc6ec2d3c5caa0b9755b5ebe32f9e519
