@@ -24,10 +24,10 @@ const C = {
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-interface DeliveryAnalysisItem { shipping_mode: string; avg_days: number; order_count: number; on_time_rate: number }
-interface SpendItem { category: string; total_spend: number; order_count: number }
-interface MonthlySpendItem { month: string; total_spend: number; order_count: number }
-interface DeliveryStatusItem { name: string; value: number }
+interface DeliveryAnalysisItem { shipping_mode: string; avg_delay: number; total_orders: number; late_pct: number; avg_order_value: number }
+interface SpendItem { category_name: string; total_spend: number; order_count: number; avg_margin: number }
+interface MonthlySpendItem { order_month: number; monthly_sales: number; order_count: number }
+interface DeliveryStatusItem { delivery_status: string; count: number; pct: number }
 
 function Skeleton({ style }: { style?: React.CSSProperties }) {
   return (
@@ -95,8 +95,8 @@ const TT_STYLE: React.CSSProperties = {
   padding: '10px 14px', color: '#F1F5F9', fontSize: 13,
 }
 
-const fmtMoney = (n: number) =>
-  n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M`
+const fmtMoney = (n: number | undefined | null) =>
+  n == null ? '—' : n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M`
   : n >= 1_000 ? `$${(n / 1_000).toFixed(1)}K`
   : `$${n.toFixed(0)}`
 
@@ -136,19 +136,21 @@ export default function ProcurementPage() {
   }, [])
 
   // Computed KPIs from data
-  const totalSpend = spendByCategory.reduce((s, c) => s + c.total_spend, 0)
-  const totalOrders = deliveryAnalysis.reduce((s, d) => s + d.order_count, 0)
+  const totalSpend = spendByCategory.reduce((s, c) => s + (c.total_spend || 0), 0)
+  const totalOrders = deliveryAnalysis.reduce((s, d) => s + (d.total_orders || 0), 0)
   const avgOnTime = deliveryAnalysis.length > 0
-    ? deliveryAnalysis.reduce((s, d) => s + d.on_time_rate, 0) / deliveryAnalysis.length
+    ? deliveryAnalysis.reduce((s, d) => s + (100 - (d.late_pct || 0)), 0) / deliveryAnalysis.length
     : 0
   const avgDeliveryDays = deliveryAnalysis.length > 0
-    ? deliveryAnalysis.reduce((s, d) => s + d.avg_days, 0) / deliveryAnalysis.length
+    ? deliveryAnalysis.reduce((s, d) => s + (d.avg_delay || 0), 0) / deliveryAnalysis.length
     : 0
 
   // Format monthly spend for chart (show last 12)
+  const MONTH_MAP = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
   const monthlyChartData = monthlySpend.slice(-12).map(m => ({
     ...m,
-    spend_k: +(m.total_spend / 1000).toFixed(1),
+    monthLabel: MONTH_MAP[(m.order_month || 1) - 1] || m.order_month,
+    spend_k: m.monthly_sales != null ? +(m.monthly_sales / 1000).toFixed(1) : 0,
   }))
 
   return (
@@ -200,7 +202,7 @@ export default function ProcurementPage() {
         <KpiCard label="Total Spend" value={loading ? '—' : fmtMoney(totalSpend)} sub="Across all categories" accent={C.blue} loading={loading && !error} />
         <KpiCard label="Total Orders" value={loading ? '—' : totalOrders.toLocaleString()} sub="Across all shipping modes" accent={C.teal} loading={loading && !error} />
         <KpiCard label="On-Time Rate" value={loading ? '—' : `${avgOnTime.toFixed(1)}%`} sub="Average across modes" accent={C.success} loading={loading && !error} />
-        <KpiCard label="Avg Delivery Days" value={loading ? '—' : `${avgDeliveryDays.toFixed(1)}d`} sub="Average lead time" accent={C.warning} loading={loading && !error} />
+        <KpiCard label="Avg Delivery Delay" value={loading ? '—' : `${avgDeliveryDays.toFixed(1)}d`} sub="Average delay time" accent={C.warning} loading={loading && !error} />
       </div>
 
       {/* Row 1: Monthly Trend + Delivery Status */}
@@ -213,7 +215,7 @@ export default function ProcurementPage() {
               <LineChart data={monthlyChartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
                 <XAxis
-                  dataKey="month"
+                  dataKey="monthLabel"
                   tick={{ fill: C.textMuted, fontSize: 11 }}
                   axisLine={false} tickLine={false}
                   angle={-35} textAnchor="end" height={50}
@@ -249,8 +251,8 @@ export default function ProcurementPage() {
               <PieChart>
                 <Pie
                   data={deliveryStatus}
-                  dataKey="value"
-                  nameKey="name"
+                  dataKey="count"
+                  nameKey="delivery_status"
                   cx="50%" cy="50%"
                   outerRadius={95} innerRadius={55}
                   paddingAngle={3}
@@ -288,7 +290,7 @@ export default function ProcurementPage() {
                 />
                 <YAxis
                   type="category"
-                  dataKey="category"
+                  dataKey="category_name"
                   tick={{ fill: C.textSecondary, fontSize: 11 }}
                   axisLine={false} tickLine={false}
                   width={120}
@@ -310,7 +312,7 @@ export default function ProcurementPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
               {deliveryAnalysis.map((item, i) => {
                 const color = SHIPPING_COLORS[item.shipping_mode] || C.blue
-                const pct = item.on_time_rate
+                const pct = 100 - (item.late_pct || 0)
                 return (
                   <div key={i} style={{
                     background: C.surface2, borderRadius: 12,
@@ -318,9 +320,9 @@ export default function ProcurementPage() {
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div>
-                        <p style={{ color: C.textPrimary, fontWeight: 700, fontSize: 14 }}>{item.shipping_mode}</p>
+                        <p style={{ color: C.textPrimary, fontWeight: 700, fontSize: 14 }}>{item.shipping_mode ?? 'Unknown'}</p>
                         <p style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>
-                          {item.order_count.toLocaleString()} orders · {item.avg_days.toFixed(1)} avg days
+                          {item.total_orders != null ? item.total_orders.toLocaleString() : '—'} orders · {item.avg_delay != null ? item.avg_delay.toFixed(1) : '—'} avg delay
                         </p>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -371,11 +373,11 @@ export default function ProcurementPage() {
                     onMouseEnter={e => (e.currentTarget.style.background = C.surface2)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <td style={{ padding: '12px 14px', color: C.textPrimary, fontWeight: 600 }}>{item.category}</td>
+                    <td style={{ padding: '12px 14px', color: C.textPrimary, fontWeight: 600 }}>{item.category_name ?? '—'}</td>
                     <td style={{ padding: '12px 14px', color: C.teal, fontWeight: 700 }}>{fmtMoney(item.total_spend)}</td>
-                    <td style={{ padding: '12px 14px', color: C.textSecondary }}>{item.order_count.toLocaleString()}</td>
+                    <td style={{ padding: '12px 14px', color: C.textSecondary }}>{item.order_count != null ? item.order_count.toLocaleString() : '—'}</td>
                     <td style={{ padding: '12px 14px', color: C.textMuted }}>
-                      {fmtMoney(item.total_spend / (item.order_count || 1))}
+                      {fmtMoney((item.total_spend || 0) / (item.order_count || 1))}
                     </td>
                   </tr>
                 ))}

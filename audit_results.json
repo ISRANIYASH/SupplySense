@@ -1,0 +1,277 @@
+{
+  "/api/admin/system-health": {
+    "status": 200,
+    "schema": {
+      "checked_at": "str",
+      "services": "list",
+      "total": "int",
+      "healthy": "int"
+    }
+  },
+  "/api/admin/table-stats": {
+    "status": 200,
+    "schema": [
+      {
+        "schemaname": "str",
+        "tablename": "str",
+        "size": "str"
+      }
+    ]
+  },
+  "/api/alerts/active": {
+    "status": 200,
+    "schema": {
+      "alerts": "list",
+      "total": "int",
+      "note": "str"
+    }
+  },
+  "/api/alerts/summary": {
+    "status": 200,
+    "schema": [
+      {
+        "severity": "str",
+        "count": "int"
+      }
+    ]
+  },
+  "/api/decisions/log": {
+    "status": 200,
+    "schema": {
+      "decisions": "list",
+      "total": "int",
+      "note": "str"
+    }
+  },
+  "/api/decisions/summary": {
+    "status": 200,
+    "schema": [
+      {
+        "type": "str",
+        "severity": "str",
+        "count": "int"
+      }
+    ]
+  },
+  "/api/explainability/shap-values": {
+    "status": 200,
+    "schema": {
+      "method": "str",
+      "label": "str",
+      "note": "str",
+      "target": "str",
+      "features": "list",
+      "sample_size": "int"
+    }
+  },
+  "/api/explainability/model-info": {
+    "status": 200,
+    "schema": {
+      "model_name": "str",
+      "architecture": "str",
+      "version": "str",
+      "status": "str",
+      "note": "str",
+      "metrics": "dict",
+      "metrics_file_exists": "bool",
+      "metrics_last_modified": "str",
+      "model_file_exists": "bool",
+      "model_file_size_mb": "float",
+      "model_last_trained": "str"
+    }
+  },
+  "/api/explainability/decision-trace": {
+    "status": 200,
+    "schema": {
+      "title": "str",
+      "description": "str",
+      "data": "list"
+    }
+  },
+  "/api/forecast/categories": {
+    "status": 200,
+    "schema": [
+      "str"
+    ]
+  },
+  "/api/forecast/regions": {
+    "status": 200,
+    "schema": [
+      "str"
+    ]
+  },
+  "/api/forecast/model-comparison": {
+    "status": 200,
+    "schema": {
+      "lstm": "dict",
+      "tft": "dict",
+      "recommended_model": "str"
+    }
+  },
+  "/api/market/commodity-prices": {
+    "status": 200,
+    "schema": {
+      "source": "str",
+      "data": "dict"
+    }
+  },
+  "/api/market/analysis": {
+    "status": 200,
+    "schema": [
+      {
+        "commodity": "str",
+        "signal": "str",
+        "severity": "str",
+        "current_price": "float",
+        "price_unit": "str",
+        "change_pct_today": "float",
+        "percentile_rank": "float",
+        "1y_low": "float",
+        "1y_high": "float",
+        "reasoning": "str",
+        "affected_inventory_categories": "list",
+        "potential_savings_pct": "float",
+        "alert_required": "bool",
+        "analyzed_at": "str"
+      }
+    ]
+  },
+  "/api/market/price-history": {
+    "status": 200,
+    "schema": [
+      {
+        "date": "str",
+        "close": "float",
+        "rolling_avg_7day": "float",
+        "rolling_avg_30day": "float",
+        "price_trend": "str"
+      }
+    ]
+  },
+  "/api/market/live-summary": {
+    "status": 200,
+    "schema": [
+      {
+        "commodity_name": "str",
+        "current_price": "float",
+        "previous_close": "float",
+        "change_pct": "float",
+        "percentile_rank": "float",
+        "price_1y_low": "float",
+        "price_1y_high": "float",
+        "price_1y_avg": "float",
+        "fetched_at": "str"
+      }
+    ]
+  },
+  "/api/mlops/experiment-runs": {
+    "status": 200,
+    "schema": {
+      "runs": "list",
+      "note": "str",
+      "mlruns_exists": "bool"
+    }
+  },
+  "/api/mlops/model-registry": {
+    "status": 200,
+    "schema": {
+      "models": "list",
+      "total": "int",
+      "note": "str",
+      "metrics_json_exists": "bool",
+      "model_pt_exists": "bool"
+    }
+  },
+  "/api/mlops/dag-status": {
+    "status": 200,
+    "schema": [
+      {
+        "name": "str",
+        "status": "str",
+        "exists": "bool"
+      }
+    ]
+  },
+  "/api/risk/overview": {
+    "status": 200,
+    "schema": {
+      "late_risk_avg": "float",
+      "late_pct": "float",
+      "critical_count": "int",
+      "high_risk_count": "int",
+      "high_risk_pct": "float",
+      "low_stock_pct": "float",
+      "regions_at_risk": "int",
+      "overall_risk_score": "float"
+    }
+  },
+  "/api/risk/matrix-data": {
+    "status": 200,
+    "schema": [
+      {
+        "risk_type": "str",
+        "probability_score": "float",
+        "impact_score": "float"
+      }
+    ]
+  },
+  "/api/risk/critical-alerts": {
+    "status": 500,
+    "error": "HTTP Error 500: Internal Server Error"
+  },
+  "/api/suppliers/all": {
+    "status": 200,
+    "schema": [
+      {
+        "supplier_id": "int",
+        "quality_score": "int",
+        "quantity_score": "int",
+        "payment_terms_score": "int",
+        "service_score": "int",
+        "reputation_score": "int",
+        "flexibility_score": "int",
+        "financial_score": "int",
+        "asset_condition_score": "int",
+        "business_results_score": "int",
+        "price_score": "int",
+        "delivery_time": "float",
+        "location_score": "int",
+        "supplier_overall_score": "float"
+      }
+    ]
+  },
+  "/api/suppliers/risk-distribution": {
+    "status": 200,
+    "schema": [
+      {
+        "risk_level": "str",
+        "count": "int",
+        "avg_score": "float"
+      }
+    ]
+  },
+  "/api/suppliers/score-breakdown": {
+    "status": 500,
+    "error": "HTTP Error 500: Internal Server Error"
+  },
+  "/api/weather/impact-analysis": {
+    "status": 200,
+    "schema": {
+      "data": "list",
+      "note": "str",
+      "source": "str"
+    }
+  },
+  "/api/weather/seasonal-impact": {
+    "status": 200,
+    "schema": [
+      {
+        "seasonality": "str",
+        "weather_condition": "str",
+        "avg_demand": "float",
+        "avg_inventory": "float",
+        "record_count": "int"
+      }
+    ]
+  }
+}

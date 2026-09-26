@@ -88,12 +88,12 @@ def risk_matrix(db: Session = Depends(get_db)):
 def critical_alerts(db: Session = Depends(get_db)):
     rows = db.execute(text("""
         SELECT supplier_id,
-               supplier_name,
+               'Supplier ' || supplier_id AS supplier_name,
                supplier_overall_score,
                quality_score,
-               delivery_score,
-               price_competitiveness,
-               relationship_score,
+               service_score,
+               price_score,
+               reputation_score,
                financial_score
         FROM dim_suppliers
         WHERE supplier_overall_score < 35
@@ -107,10 +107,10 @@ def critical_alerts(db: Session = Depends(get_db)):
 def supplier_distribution(db: Session = Depends(get_db)):
     rows = db.execute(text("""
         SELECT
-            supplier_name,
+            'Supplier ' || supplier_id AS supplier_name,
             supplier_overall_score,
             quality_score,
-            delivery_score,
+            service_score,
             financial_score,
             CASE
                 WHEN supplier_overall_score >= 75 THEN 'Low'

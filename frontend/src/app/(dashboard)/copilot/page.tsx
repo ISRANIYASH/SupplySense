@@ -5,7 +5,7 @@ const C = { bg:'#0A0F1E', surface:'#111827', surface2:'#1C2537', border:'#1E2D45
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function LiveBadge() {
-  return <span style={{fontSize:11,fontWeight:700,color:C.teal,background:`${C.teal}18`,border:`1px solid ${C.teal}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🟢 LIVE DATA</span>
+  return <span style={{fontSize:11,fontWeight:700,color:C.purple,background:`${C.purple}18`,border:`1px solid ${C.purple}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🤖 AI COPILOT</span>
 }
 
 export default function CopilotPage() {

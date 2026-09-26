@@ -57,7 +57,7 @@ def copilot_query(body: dict, db: Session = Depends(get_db)):
     # ── Supplier ───────────────────────────────────────────────────────────────
     if any(k in msg for k in ["supplier", "vendor", "partner"]):
         rows = _q(db, """
-            SELECT supplier_name, supplier_overall_score, quality_score, delivery_score
+            SELECT 'Supplier ' || supplier_id AS supplier_name, supplier_overall_score, quality_score, service_score
             FROM dim_suppliers
             ORDER BY supplier_overall_score DESC LIMIT 5
         """)

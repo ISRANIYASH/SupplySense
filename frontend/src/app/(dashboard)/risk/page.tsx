@@ -43,7 +43,7 @@ interface CriticalSupplier {
   supplier_name: string
   supplier_overall_score: number
   quality_score: number
-  delivery_score: number
+  service_score: number
   financial_score: number
 }
 
@@ -347,9 +347,9 @@ export default function RiskPage() {
                       color={scoreColor(sup.quality_score)}
                     />
                     <MiniBar
-                      label='Delivery Score'
-                      value={sup.delivery_score}
-                      color={scoreColor(sup.delivery_score)}
+                      label='Service Score'
+                      value={sup.service_score}
+                      color={scoreColor(sup.service_score)}
                     />
                     <MiniBar
                       label='Financial Score'
@@ -360,7 +360,7 @@ export default function RiskPage() {
                     {/* Reasoning */}
                     <div style={{marginTop:12,padding:'10px 12px',background:`${C.danger}10`,border:`1px solid ${C.danger}25`,borderRadius:6}}>
                       <p style={{color:C.danger,fontSize:11,margin:0,lineHeight:1.6}}>
-                        Score: {sup.supplier_overall_score?.toFixed(0)}/100 | Quality: {sup.quality_score?.toFixed(0)} | Delivery: {sup.delivery_score?.toFixed(0)} | Financial: {sup.financial_score?.toFixed(0)} — Immediate review required
+                        Score: {sup.supplier_overall_score?.toFixed(0)}/100 | Quality: {sup.quality_score?.toFixed(0)} | Service: {sup.service_score?.toFixed(0)} | Financial: {sup.financial_score?.toFixed(0)} — Immediate review required
                       </p>
                     </div>
                   </div>
