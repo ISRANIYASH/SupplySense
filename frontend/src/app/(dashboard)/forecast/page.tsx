@@ -5,14 +5,14 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, ComposedChart, Line
 } from 'recharts'
 import { TrendingUp, RefreshCw, Wifi, AlertTriangle, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 const C = {
   bg: '#0A0F1E', surface: '#111827', surface2: '#1C2537', border: '#1E2D45',
   blue: '#3B8EE8', teal: '#00D4AA', warning: '#F59E0B', danger: '#EF4444',
   success: '#10B981', purple: '#8B5CF6', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 } as const
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function GlassCard({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
@@ -59,7 +59,7 @@ export default function ForecastPage() {
   const [selCat, setSelCat]         = useState('')
   const [selReg, setSelReg]         = useState('')
   const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState(false)
+  const [error, setError]           = useState<string | null>(null)
   const [modelType, setModelType]   = useState<'lstm' | 'tft'>('tft')
   const [tftPreds, setTftPreds]     = useState<any[]>([])
 
@@ -68,10 +68,13 @@ export default function ForecastPage() {
     const params = new URLSearchParams({ limit: '60' })
     if (selCat) params.set('category', selCat)
     if (selReg) params.set('region', selReg)
-    fetch(`${API}/api/forecast/demand-series?${params}`)
-      .then(r => r.json())
-      .then(d => { setSeries(d); setLoading(false) })
-      .catch(() => { setError(true); setLoading(false) })
+    fetch(getApiUrl(`/api/forecast/demand-series?${params}`))
+      .then(r => {
+        if (!r.ok) throw new Error(`API error ${r.status}: Failed to load demand series`)
+        return r.json()
+      })
+      .then(d => { setSeries(d); setLoading(false); setError(null) })
+      .catch((e) => { setError(formatApiErrorMessage(e)); setLoading(false) })
   }, [selCat, selReg])
 
   const loadTftPredictions = useCallback(() => {
@@ -79,23 +82,36 @@ export default function ForecastPage() {
       setTftPreds([])
       return
     }
-    fetch(`${API}/api/forecast/tft-predict?category=${encodeURIComponent(selCat)}&region=${encodeURIComponent(selReg)}`)
-      .then(r => r.json())
+    fetch(getApiUrl(`/api/forecast/tft-predict?category=${encodeURIComponent(selCat)}&region=${encodeURIComponent(selReg)}`))
+      .then(r => {
+        if (!r.ok) throw new Error(`API error ${r.status}`)
+        return r.json()
+      })
       .then(d => setTftPreds(d))
       .catch(() => setTftPreds([]))
   }, [selCat, selReg])
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/api/forecast/categories`).then(r => r.json()),
-      fetch(`${API}/api/forecast/regions`).then(r => r.json()),
-      fetch(`${API}/api/forecast/model-comparison`).then(r => r.json()),
+      fetch(getApiUrl('/api/forecast/categories')).then(r => {
+        if (!r.ok) throw new Error(`API error ${r.status}`)
+        return r.json()
+      }),
+      fetch(getApiUrl('/api/forecast/regions')).then(r => {
+        if (!r.ok) throw new Error(`API error ${r.status}`)
+        return r.json()
+      }),
+      fetch(getApiUrl('/api/forecast/model-comparison')).then(r => {
+        if (!r.ok) throw new Error(`API error ${r.status}`)
+        return r.json()
+      }),
     ]).then(([cats, regs, compData]) => {
       setCategories(cats)
       setRegions(regs)
       setComp(compData)
       setModelType(compData.recommended_model || 'tft')
-    }).catch(() => setError(true))
+      setError(null)
+    }).catch((e) => setError(formatApiErrorMessage(e)))
   }, [])
 
   useEffect(() => { 
@@ -135,12 +151,7 @@ export default function ForecastPage() {
         <LiveBadge />
       </div>
 
-      {error && (
-        <div style={{ padding: 20, background: `${C.danger}15`, border: `1px solid ${C.danger}40`, borderRadius: 10, marginBottom: 20, color: C.danger, fontSize: 13 }}>
-          <AlertTriangle size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-          Unable to connect to SupplySense API. Make sure backend is running on port 8000.
-        </div>
-      )}
+      {error && <ApiAlertBanner message={error} />}
 
       {/* Comparison Banner */}
       {comp && comp.tft && comp.tft.mape && comp.lstm && comp.lstm.mape && (

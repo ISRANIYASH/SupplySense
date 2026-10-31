@@ -1,4 +1,6 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 import React, { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
@@ -31,7 +33,6 @@ const C = {
   success: '#10B981', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 } as const
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function useApiData<T>(url: string, defaultVal: T) {
   const [data, setData] = useState<T>(defaultVal)
@@ -74,7 +75,7 @@ const DELIVERY_STATUS = [
 ]
 
 export default function LogisticsPage() {
-  const { data: shippingData, loading: shipLoading } = useApiData<any[]>(`${API}/api/logistics/shipping-summary`, SHIPPING_MODES)
+  const { data: shippingData, loading: shipLoading } = useApiData<any[]>(getApiUrl(`/api/logistics/shipping-summary`), SHIPPING_MODES)
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>

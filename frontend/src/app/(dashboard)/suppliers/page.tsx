@@ -1,4 +1,6 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 import { useEffect, useState } from 'react'
 import {
@@ -12,7 +14,6 @@ const C = {
   success: '#10B981', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface Supplier {
   supplier_id: number
@@ -64,7 +65,7 @@ export default function SuppliersPage() {
     const fetchList = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`${API}/api/suppliers/list?limit=${limit}&offset=${page*limit}&search=${search}&risk_level=${riskFilter}&sort_by=${sortBy}&sort_dir=${sortDir}`)
+        const res = await fetch(getApiUrl(`/api/suppliers/list?limit=${limit}&offset=${page*limit}&search=${search}&risk_level=${riskFilter}&sort_by=${sortBy}&sort_dir=${sortDir}`))
         if (!res.ok) throw new Error('API Error')
         const data = await res.json()
         setSuppliers(data.items)

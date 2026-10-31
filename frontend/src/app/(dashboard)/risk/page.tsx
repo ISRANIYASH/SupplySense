@@ -1,9 +1,10 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 import { useEffect, useState } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 
 const C = { bg:'#0A0F1E', surface:'#111827', surface2:'#1C2537', border:'#1E2D45', blue:'#3B8EE8', teal:'#00D4AA', warning:'#F59E0B', danger:'#EF4444', success:'#10B981', purple:'#8B5CF6', textPrimary:'#F1F5F9', textSecondary:'#CBD5E1', textMuted:'#64748B' } as const
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function GlassCard({children,style={}}:{children:React.ReactNode,style?:React.CSSProperties}) {
   return <div style={{background:'rgba(17,24,39,0.85)',border:`1px solid ${C.border}`,borderRadius:12,...style}}>{children}</div>
@@ -14,8 +15,8 @@ function Skeleton({h=20,w='100%'}:{h?:number,w?:string}) {
 function LiveBadge() {
   return <span style={{fontSize:11,fontWeight:700,color:C.teal,background:`${C.teal}18`,border:`1px solid ${C.teal}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🟢 LIVE DATA</span>
 }
-function ErrorBox() {
-  return <div style={{padding:20,background:`${C.danger}15`,border:`1px solid ${C.danger}40`,borderRadius:10,color:C.danger,fontSize:13,marginBottom:20}}>⚠️ Unable to connect to SupplySense API. Make sure backend is running on port 8000.</div>
+function ErrorBox({ message }: { message?: string | null }) {
+  return <ApiAlertBanner message={message} />
 }
 function KpiTile({label,value,sub,color=C.blue,loading}:{label:string,value:string|number,sub?:string,color?:string,loading?:boolean}) {
   return (
@@ -149,19 +150,19 @@ export default function RiskPage() {
   const [matrix, setMatrix] = useState<MatrixPoint[]>([])
   const [critical, setCritical] = useState<CriticalSupplier[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/api/risk/overview`).then(r=>r.json()),
-      fetch(`${API}/api/risk/matrix-data`).then(r=>r.json()),
-      fetch(`${API}/api/risk/critical-alerts`).then(r=>r.json()),
+      fetch(getApiUrl(`/api/risk/overview`)).then(r=>r.json()),
+      fetch(getApiUrl(`/api/risk/matrix-data`)).then(r=>r.json()),
+      fetch(getApiUrl(`/api/risk/critical-alerts`)).then(r=>r.json()),
     ]).then(([ov, mx, cr]) => {
       setOverview(ov)
       setMatrix(Array.isArray(mx) ? mx : [])
       setCritical(Array.isArray(cr) ? cr : [])
       setLoading(false)
-    }).catch(() => { setError(true); setLoading(false) })
+    }).catch(e => { setError(formatApiErrorMessage(e)); setLoading(false) })
   }, [])
 
   const scoreColor = (v: number) => v < 40 ? C.danger : v < 60 ? C.warning : C.success

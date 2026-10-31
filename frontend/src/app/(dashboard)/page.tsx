@@ -1,4 +1,6 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 import React, { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
@@ -33,7 +35,6 @@ const C = {
   success: '#10B981', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 } as const
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 // ─── Custom hook for API fetching ─────────────────────────────────────────────
 function useApiData<T>(url: string, defaultVal: T) {
@@ -54,7 +55,7 @@ function useApiData<T>(url: string, defaultVal: T) {
       })
       .then(d => { setData(d); setLoading(false) })
       .catch(e => {
-        setError(e.message || 'Unable to connect to API on port 8000.')
+        setError(formatApiErrorMessage(e))
         setLoading(false)
       })
   }, [url])
@@ -84,22 +85,7 @@ function Skeleton({ h = 20, w = '100%' }: { h?: number; w?: string | number }) {
 }
 
 function ErrorBox({ message }: { message?: string | null }) {
-  const isDb = message?.includes('PostgreSQL') || message?.includes('Database')
-  return (
-    <div style={{ padding: 18, textAlign: 'center', color: C.danger, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, marginBottom: 20 }}>
-      <AlertTriangle size={24} style={{ marginBottom: 6 }} />
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{message || 'Unable to connect to SupplySense API.'}</p>
-      {isDb ? (
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: C.textSecondary }}>
-          The backend is running, but PostgreSQL is offline. Launch Docker Desktop and run: <code style={{ color: C.teal, background: C.surface2, padding: '2px 6px', borderRadius: 4 }}>npm run db:up</code>
-        </p>
-      ) : (
-        <p style={{ margin: '6px 0 0', fontSize: 12, color: C.textSecondary }}>
-          Make sure the backend is running on port 8000.
-        </p>
-      )}
-    </div>
-  )
+  return <ApiAlertBanner message={message} />
 }
 
 function KpiTile({ label, value, sub, icon: Icon, color = C.blue, loading }: {
@@ -151,10 +137,10 @@ const itemVariants = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ControlTowerPage() {
-  const { data: kpis, loading: kpiLoading, error: kpiError }       = useApiData<Record<string, number | string>>(`${API}/api/dashboard/kpis`, {})
-  const { data: trend, loading: trendLoading }                      = useApiData<{ date: string; total_demand: number }[]>(`${API}/api/dashboard/demand-trend`, [])
-  const { data: categories, loading: catLoading }                   = useApiData<{ category_name: string; total_quantity: number; total_sales: number }[]>(`${API}/api/dashboard/top-categories`, [])
-  const { data: regions, loading: regLoading }                      = useApiData<{ order_region: string; total_demand: number; risk_score: number }[]>(`${API}/api/dashboard/regional-demand`, [])
+  const { data: kpis, loading: kpiLoading, error: kpiError }       = useApiData<Record<string, number | string>>(getApiUrl(`/api/dashboard/kpis`), {})
+  const { data: trend, loading: trendLoading }                      = useApiData<{ date: string; total_demand: number }[]>(getApiUrl(`/api/dashboard/demand-trend`), [])
+  const { data: categories, loading: catLoading }                   = useApiData<{ category_name: string; total_quantity: number; total_sales: number }[]>(getApiUrl(`/api/dashboard/top-categories`), [])
+  const { data: regions, loading: regLoading }                      = useApiData<{ order_region: string; total_demand: number; risk_score: number }[]>(getApiUrl(`/api/dashboard/regional-demand`), [])
 
   const fmt = (n: number | undefined | null, prefix = '', suffix = '') =>
     n == null ? '—' : `${prefix}${n.toLocaleString()}${suffix}`

@@ -1,8 +1,9 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 import React, { useState, useEffect } from 'react'
 
 const C = { bg:'#0A0F1E', surface:'#111827', surface2:'#1C2537', border:'#1E2D45', blue:'#3B8EE8', teal:'#00D4AA', warning:'#F59E0B', danger:'#EF4444', success:'#10B981', purple:'#8B5CF6', textPrimary:'#F1F5F9', textSecondary:'#CBD5E1', textMuted:'#64748B' } as const
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function GlassCard({children,style={}}: {children:React.ReactNode,style?:React.CSSProperties}) {
   return <div style={{background:'rgba(17,24,39,0.85)',border:`1px solid ${C.border}`,borderRadius:12,...style}}>{children}</div>
@@ -26,13 +27,13 @@ export default function SimulatorPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch(`${API}/api/simulator/baseline`).then(r=>r.json()).then(setBase).catch(console.error)
+    fetch(getApiUrl(`/api/simulator/baseline`)).then(r=>r.json()).then(setBase).catch(console.error)
   }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(true)
-      fetch(`${API}/api/simulator/run`, {
+      fetch(getApiUrl(`/api/simulator/run`), {
         method: 'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({demand_change_pct:demand, lead_time_multiplier:lead, price_change_pct:price})
       }).then(r=>r.json()).then(setRes).finally(()=>setLoading(false))

@@ -1,4 +1,6 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 import React, { useState, useEffect } from 'react'
 import {
@@ -13,7 +15,6 @@ const C = {
   success: '#10B981', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 } as const
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const SIGNAL_COLORS: Record<string, string> = {
   'STRONG BUY': '#DC2626', 'BUY': '#EA580C', 'HOLD': '#16A34A',
   'WAIT': '#D97706', 'REDUCE': '#7C3AED', 'NO_DATA': '#64748B',
@@ -39,21 +40,21 @@ export default function MarketPage() {
   const [history, setHistory]   = useState<unknown[]>([])
   const [liveSummary, setLiveSummary] = useState<unknown[]>([])
   const [loading, setLoading]   = useState(true)
-  const [error, setError]       = useState(false)
+  const [error, setError]       = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
-      fetch(`${API}/api/market/commodity-prices`).then(r => r.json()),
-      fetch(`${API}/api/market/analysis`).then(r => r.json()),
-      fetch(`${API}/api/market/price-history`).then(r => r.json()),
-      fetch(`${API}/api/market/live-summary`).then(r => r.json()).catch(() => []),
+      fetch(getApiUrl(`/api/market/commodity-prices`)).then(r => r.json()),
+      fetch(getApiUrl(`/api/market/analysis`)).then(r => r.json()),
+      fetch(getApiUrl(`/api/market/price-history`)).then(r => r.json()),
+      fetch(getApiUrl(`/api/market/live-summary`)).then(r => r.json()).catch(() => []),
     ]).then(([p, a, h, ls]) => {
       setPrices(p)
       setAnalysis(Array.isArray(a) ? a : [])
       setHistory(Array.isArray(h) ? h : [])
       setLiveSummary(Array.isArray(ls) ? ls : [])
       setLoading(false)
-    }).catch(() => { setError(true); setLoading(false) })
+    }).catch(e => { setError(formatApiErrorMessage(e)); setLoading(false) })
   }, [])
 
   // Live prices from market scheduler
@@ -88,12 +89,7 @@ export default function MarketPage() {
         <LiveBadge />
       </div>
 
-      {error && (
-        <div style={{ padding: 20, background: `${C.danger}15`, border: `1px solid ${C.danger}40`, borderRadius: 10, marginBottom: 20, color: C.danger, fontSize: 13 }}>
-          <AlertTriangle size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
-          Unable to connect to API. Make sure backend is running on port 8000.
-        </div>
-      )}
+      {error && <ApiAlertBanner message={error} />}
 
       {/* Live AI Signals — from market scheduler */}
       {analysisArr.length > 0 && (

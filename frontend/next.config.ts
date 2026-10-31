@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
       "http://localhost:8000",
       "ws://localhost:8000",
       "wss:",
+      "https://*.onrender.com",
       cleanApiUrl
     ].filter(Boolean).join(' ');
 
@@ -47,6 +48,19 @@ const nextConfig: NextConfig = {
         ],
       },
     ]
+  },
+  async rewrites() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL || '';
+    if (!apiUrl) return [];
+    const cleanApiUrl = apiUrl.replace(/\/+$/, '');
+    return {
+      fallback: [
+        {
+          source: '/api/:path*',
+          destination: `${cleanApiUrl}/api/:path*`,
+        },
+      ],
+    };
   },
 }
 

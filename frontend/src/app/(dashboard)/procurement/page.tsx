@@ -1,4 +1,6 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 import { useEffect, useState } from 'react'
 import {
@@ -22,7 +24,6 @@ const C = {
   textMuted: '#64748B',
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface DeliveryAnalysisItem { shipping_mode: string; avg_delay: number; total_orders: number; late_pct: number; avg_order_value: number }
 interface SpendItem { category_name: string; total_spend: number; order_count: number; avg_margin: number }
@@ -114,10 +115,10 @@ export default function ProcurementPage() {
         setLoading(true)
         setError(null)
         const [r1, r2, r3, r4] = await Promise.all([
-          fetch(`${API}/api/procurement/delivery-analysis`),
-          fetch(`${API}/api/procurement/spend-by-category`),
-          fetch(`${API}/api/procurement/monthly-spend`),
-          fetch(`${API}/api/procurement/delivery-status`),
+          fetch(getApiUrl(`/api/procurement/delivery-analysis`)),
+          fetch(getApiUrl(`/api/procurement/spend-by-category`)),
+          fetch(getApiUrl(`/api/procurement/monthly-spend`)),
+          fetch(getApiUrl(`/api/procurement/delivery-status`)),
         ])
         if (!r1.ok || !r2.ok || !r3.ok || !r4.ok)
           throw new Error('One or more procurement endpoints returned an error.')
@@ -127,7 +128,7 @@ export default function ProcurementPage() {
         setMonthlySpend(ms)
         setDeliveryStatus(ds)
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch procurement data.')
+        setError(formatApiErrorMessage(err))
       } finally {
         setLoading(false)
       }
@@ -181,21 +182,7 @@ export default function ProcurementPage() {
       </div>
 
       {/* Error State */}
-      {error && (
-        <div style={{
-          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.35)',
-          borderRadius: 12, padding: '20px 24px', marginBottom: 28,
-          display: 'flex', alignItems: 'center', gap: 14,
-        }}>
-          <span style={{ fontSize: 22 }}>⚠️</span>
-          <div>
-            <p style={{ color: C.danger, fontWeight: 700, fontSize: 15 }}>API Connection Error</p>
-            <p style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>
-              {error} — Ensure FastAPI backend is running at {API}
-            </p>
-          </div>
-        </div>
-      )}
+      {error && <ApiAlertBanner message={error} />}
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20, marginBottom: 32 }}>

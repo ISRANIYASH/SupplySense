@@ -1,4 +1,6 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 import { useEffect, useState } from 'react'
 import {
@@ -12,7 +14,6 @@ const C = {
   success: '#10B981', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface Summary { total_skus: number; total_stock: number; low_stock_count: number; excess_stock_count: number; optimal_count: number; avg_safety_stock: number; total_inventory_value: number }
 interface StockStatusItem { stock_status: string; count: number; total_units: number }
@@ -91,12 +92,12 @@ export default function InventoryPage() {
         setLoading(true)
         setError(null)
         const [r1, r2, r3, r4, r5, r6] = await Promise.all([
-          fetch(`${API}/api/inventory/summary`),
-          fetch(`${API}/api/inventory/stock-status-distribution`),
-          fetch(`${API}/api/inventory/abc-analysis`),
-          fetch(`${API}/api/inventory/low-stock-items`),
-          fetch(`${API}/api/inventory/seasonality-trend`),
-          fetch(`${API}/api/inventory/categories`),
+          fetch(getApiUrl(`/api/inventory/summary`)),
+          fetch(getApiUrl(`/api/inventory/stock-status-distribution`)),
+          fetch(getApiUrl(`/api/inventory/abc-analysis`)),
+          fetch(getApiUrl(`/api/inventory/low-stock-items`)),
+          fetch(getApiUrl(`/api/inventory/seasonality-trend`)),
+          fetch(getApiUrl(`/api/inventory/categories`)),
         ])
         if (!r1.ok) throw new Error('API Error')
         setSummary(await r1.json())
@@ -116,7 +117,7 @@ export default function InventoryPage() {
       const q = new URLSearchParams({ limit: '20', offset: String(page * 20) })
       if (search) q.append('search', search)
       if (categoryFilter !== 'all') q.append('category', categoryFilter)
-      const res = await fetch(`${API}/api/inventory/items?${q.toString()}`)
+      const res = await fetch(getApiUrl(`/api/inventory/items?${q.toString()}`))
       if (res.ok) {
         const d = await res.json()
         setItems(d.items)
@@ -135,7 +136,7 @@ export default function InventoryPage() {
     e.preventDefault()
     setFormError('')
     try {
-      const res = await fetch(`${API}/api/inventory/items`, {
+      const res = await fetch(getApiUrl(`/api/inventory/items`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,7 +150,7 @@ export default function InventoryPage() {
       setShowAddModal(false)
       fetchItems() // refresh
       // Reset summary
-      fetch(`${API}/api/inventory/summary`).then(r => r.json()).then(setSummary)
+      fetch(getApiUrl(`/api/inventory/summary`)).then(r => r.json()).then(setSummary)
     } catch (e: any) {
       setFormError(e.message)
     }

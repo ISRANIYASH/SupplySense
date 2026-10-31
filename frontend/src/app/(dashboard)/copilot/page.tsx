@@ -1,8 +1,9 @@
 'use client'
+import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 import React, { useState } from 'react'
 
 const C = { bg:'#0A0F1E', surface:'#111827', surface2:'#1C2537', border:'#1E2D45', blue:'#3B8EE8', teal:'#00D4AA', warning:'#F59E0B', danger:'#EF4444', success:'#10B981', purple:'#8B5CF6', textPrimary:'#F1F5F9', textSecondary:'#CBD5E1', textMuted:'#64748B' } as const
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 function LiveBadge() {
   return <span style={{fontSize:11,fontWeight:700,color:C.purple,background:`${C.purple}18`,border:`1px solid ${C.purple}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🤖 AI COPILOT</span>
@@ -19,7 +20,7 @@ export default function CopilotPage() {
     setInput('')
     setLoading(true)
     try {
-      const res = await fetch(`${API}/api/copilot/query`, {
+      const res = await fetch(getApiUrl(`/api/copilot/query`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text })
