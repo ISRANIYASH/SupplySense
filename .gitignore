@@ -87,3 +87,4 @@ reports/*.pdf
 
 # === Scripts output ===
 scripts/__pycache__/
+.neon

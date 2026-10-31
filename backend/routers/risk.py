@@ -16,19 +16,19 @@ router = APIRouter()
 def risk_overview(db: Session = Depends(get_db)):
     row = db.execute(text("""
         WITH delivery_risk AS (
-            SELECT AVG(late_delivery_risk) AS late_risk_avg,
-                   COUNT(*) FILTER (WHERE late_delivery_risk = 1) * 100.0 / COUNT(*) AS late_pct
+            SELECT COALESCE(AVG(late_delivery_risk), 0) AS late_risk_avg,
+                   COALESCE(COUNT(*) FILTER (WHERE late_delivery_risk = 1) * 100.0 / NULLIF(COUNT(*), 0), 0) AS late_pct
             FROM fact_orders
         ),
         supplier_risk AS (
             SELECT COUNT(*) FILTER (WHERE supplier_overall_score < 35) AS critical_count,
                    COUNT(*) FILTER (WHERE supplier_overall_score < 50) AS high_risk_count,
                    COUNT(*) AS total,
-                   COUNT(*) FILTER (WHERE supplier_overall_score < 50) * 100.0 / COUNT(*) AS high_risk_pct
+                   COALESCE(COUNT(*) FILTER (WHERE supplier_overall_score < 50) * 100.0 / NULLIF(COUNT(*), 0), 0) AS high_risk_pct
             FROM dim_suppliers
         ),
         inventory_risk AS (
-            SELECT COUNT(*) FILTER (WHERE stock_status = 'Low') * 100.0 / COUNT(*) AS low_stock_pct
+            SELECT COALESCE(COUNT(*) FILTER (WHERE stock_status = 'Low') * 100.0 / NULLIF(COUNT(*), 0), 0) AS low_stock_pct
             FROM fact_inventory
         ),
         region_risk AS (
@@ -51,9 +51,9 @@ def risk_overview(db: Session = Depends(get_db)):
             rr.regions_at_risk,
             -- Weighted risk score: delivery(40%) + supplier(35%) + inventory(25%)
             ROUND(
-                (dr.late_risk_avg * 40 +
-                 (sr.high_risk_pct / 100) * 35 +
-                 (ir.low_stock_pct / 100) * 25)::numeric,
+                COALESCE(dr.late_risk_avg * 40 +
+                 (sr.high_risk_pct / 100.0) * 35 +
+                 (ir.low_stock_pct / 100.0) * 25, 0)::numeric,
                 1
             ) AS overall_risk_score
         FROM delivery_risk dr, supplier_risk sr, inventory_risk ir, region_risk rr
@@ -65,20 +65,20 @@ def risk_overview(db: Session = Depends(get_db)):
 def risk_matrix(db: Session = Depends(get_db)):
     rows = db.execute(text("""
         SELECT 'Supplier Risk' AS risk_type,
-               COUNT(*) * 1.0 / (SELECT COUNT(*) FROM dim_suppliers) * 100 AS probability_score,
-               AVG(100.0 - supplier_overall_score) AS impact_score
+               COALESCE(COUNT(*) * 1.0 / NULLIF((SELECT COUNT(*) FROM dim_suppliers), 0) * 100, 0) AS probability_score,
+               COALESCE(AVG(100.0 - supplier_overall_score), 0) AS impact_score
         FROM dim_suppliers WHERE supplier_overall_score < 50
         UNION ALL
         SELECT 'Delivery Risk' AS risk_type,
-               ROUND(AVG(late_delivery_risk) * 100, 1) AS probability_score,
-               ROUND(AVG(actual_delay_days) * 10, 1)   AS impact_score
+               ROUND(COALESCE(AVG(late_delivery_risk) * 100, 0), 1) AS probability_score,
+               ROUND(COALESCE(AVG(actual_delay_days) * 10, 0), 1)   AS impact_score
         FROM fact_orders
         UNION ALL
         SELECT 'Inventory Risk' AS risk_type,
                ROUND(
-                 SUM(CASE WHEN stock_status = 'Low' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1
+                 COALESCE(SUM(CASE WHEN stock_status = 'Low' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 0), 1
                ) AS probability_score,
-               ROUND(AVG(CASE WHEN stock_status = 'Low' THEN 80 ELSE 20 END)::numeric, 1) AS impact_score
+               ROUND(COALESCE(AVG(CASE WHEN stock_status = 'Low' THEN 80 ELSE 20 END), 0)::numeric, 1) AS impact_score
         FROM fact_inventory
     """)).mappings().all()
     return [dict(r) for r in rows]

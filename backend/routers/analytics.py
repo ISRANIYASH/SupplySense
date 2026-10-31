@@ -33,6 +33,12 @@ def _load_inventory_df(db: Session, cols: list[str]) -> pd.DataFrame:
 def correlation_matrix(db: Session = Depends(get_db)):
     """Pearson correlation between numeric inventory columns."""
     df = _load_inventory_df(db, NUMERIC_COLS)
+    if df.empty or len(df) < 2:
+        return {
+            "columns": NUMERIC_COLS,
+            "matrix": [],
+            "row_count": len(df)
+        }
     corr = df.corr(method='pearson').round(4)
 
     # Return as ECharts-friendly format
@@ -58,6 +64,17 @@ def distribution(column_name: str, db: Session = Depends(get_db)):
 
     df = _load_inventory_df(db, [column_name])
     series = df[column_name].dropna()
+    if series.empty:
+        return {
+            "column": column_name,
+            "total_records": 0,
+            "mean": None,
+            "median": None,
+            "std": None,
+            "min": None,
+            "max": None,
+            "bins": []
+        }
 
     bins = pd.cut(series, bins=20, precision=2)
     counts = bins.value_counts().sort_index()
@@ -97,6 +114,13 @@ def outliers(db: Session = Depends(get_db)):
         db.bind
     )
     df = df.dropna(subset=['units_sold'])
+    if df.empty or len(df) < 2:
+        return {
+            "outliers": [],
+            "total_outliers": 0,
+            "total_analyzed": len(df),
+            "outlier_pct": 0.0
+        }
     df['z_score'] = stats.zscore(df['units_sold'].astype(float))
     outliers_df = df[df['z_score'].abs() > 3].sort_values('z_score', ascending=False).head(20)
     outliers_df['z_score'] = outliers_df['z_score'].round(3)

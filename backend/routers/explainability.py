@@ -38,6 +38,15 @@ def shap_values(db: Session = Depends(get_db)):
         LIMIT 5000
     """), db.bind).dropna()
 
+    if df.empty or len(df) < 2:
+        return {
+            "method": "Pearson Correlation (normalized)",
+            "label": "Statistical Feature Importance",
+            "note": "Awaiting inventory data. Feature importances will appear once inventory data is loaded.",
+            "features": [],
+            "row_count": len(df)
+        }
+
     corr = df.corr(method='pearson')['units_sold'].drop('units_sold')
     abs_corr = corr.abs()
     normalized = (abs_corr / abs_corr.sum()).round(4)

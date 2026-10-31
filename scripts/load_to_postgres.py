@@ -1,13 +1,10 @@
+import os
+import sys
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-DB_USER = "supplysense_admin"
-DB_PASS = "secure_supplysense_pwd_2026"
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "supplysense"
-
-engine = create_engine(f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+from backend.db import engine
 
 print("Loading data into PostgreSQL...")
 
