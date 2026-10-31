@@ -19,10 +19,21 @@ from routers import (
 app = FastAPI(title="SupplySense API", version="3.0.0",
               description="Real PostgreSQL data powering all 19 SupplySense pages.")
 
+frontend_url = os.getenv("FRONTEND_URL", "")
+
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000",
-                   "http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

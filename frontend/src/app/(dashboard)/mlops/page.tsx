@@ -46,7 +46,7 @@ export default function MLOpsPage() {
       <GlassCard style={{padding:24,marginBottom:24}}>
         <h3 style={{color:C.textPrimary,fontSize:16,margin:'0 0 16px'}}>Pipeline DAG Status</h3>
         <div style={{display:'flex',gap:16,overflowX:'auto',paddingBottom:8}}>
-          {loading ? Array.from({length:5}).map((_,i)=><Skeleton key={i} w='180px' h='60px'/>) : 
+          {loading ? Array.from({length:5}).map((_,i)=><Skeleton key={i} w='180px' h={60}/>) :
             dag?.map((step:any) => (
               <div key={step.name} style={{minWidth:160,background:C.surface2,padding:12,borderRadius:8,border:`1px solid ${step.status==='success'?C.success:C.warning}40`}}>
                 <div style={{fontSize:12,color:C.textSecondary,fontWeight:600}}>{step.name}</div>

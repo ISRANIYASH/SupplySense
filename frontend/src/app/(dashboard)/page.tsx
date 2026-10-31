@@ -39,13 +39,24 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 function useApiData<T>(url: string, defaultVal: T) {
   const [data, setData] = useState<T>(defaultVal)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(url)
-      .then(r => { if (!r.ok) throw new Error(); return r.json() })
+      .then(async r => {
+        if (!r.ok) {
+          if (r.status === 500) {
+            throw new Error('Database Offline: PostgreSQL is not reachable on port 5432.')
+          }
+          throw new Error(`API returned status ${r.status}`)
+        }
+        return r.json()
+      })
       .then(d => { setData(d); setLoading(false) })
-      .catch(() => { setError(true); setLoading(false) })
+      .catch(e => {
+        setError(e.message || 'Unable to connect to API on port 8000.')
+        setLoading(false)
+      })
   }, [url])
 
   return { data, loading, error }
@@ -72,11 +83,21 @@ function Skeleton({ h = 20, w = '100%' }: { h?: number; w?: string | number }) {
   return <div style={{ height: h, width: w, background: C.surface2, borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
 }
 
-function ErrorBox() {
+function ErrorBox({ message }: { message?: string | null }) {
+  const isDb = message?.includes('PostgreSQL') || message?.includes('Database')
   return (
-    <div style={{ padding: 24, textAlign: 'center', color: C.danger }}>
-      <AlertTriangle size={24} style={{ marginBottom: 8 }} />
-      <p style={{ margin: 0, fontSize: 13 }}>Unable to connect to SupplySense API.<br />Make sure backend is running on port 8000.</p>
+    <div style={{ padding: 18, textAlign: 'center', color: C.danger, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, marginBottom: 20 }}>
+      <AlertTriangle size={24} style={{ marginBottom: 6 }} />
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{message || 'Unable to connect to SupplySense API.'}</p>
+      {isDb ? (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: C.textSecondary }}>
+          The backend is running, but PostgreSQL is offline. Launch Docker Desktop and run: <code style={{ color: C.teal, background: C.surface2, padding: '2px 6px', borderRadius: 4 }}>npm run db:up</code>
+        </p>
+      ) : (
+        <p style={{ margin: '6px 0 0', fontSize: 12, color: C.textSecondary }}>
+          Make sure the backend is running on port 8000.
+        </p>
+      )}
     </div>
   )
 }
@@ -154,7 +175,7 @@ export default function ControlTowerPage() {
         <LiveBadge />
       </div>
 
-      {kpiError && <ErrorBox />}
+      {kpiError && <ErrorBox message={kpiError} />}
 
       {/* KPI Grid */}
       <motion.div
