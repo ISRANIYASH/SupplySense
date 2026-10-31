@@ -9,9 +9,7 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
-  experimental: {
-    turbo: {},
-  },
+  turbopack: {},
   env: {
     NEXT_PUBLIC_APP_VERSION: '1.0.0',
   },
