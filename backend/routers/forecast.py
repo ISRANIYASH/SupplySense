@@ -4,7 +4,6 @@ Demand forecast series, categories, regions, and model metrics.
 """
 import json
 import os
-import torch
 import numpy as np
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
@@ -137,23 +136,8 @@ def tft_predict(
             })
         return preds
 
-    try:
-        if TFT_MODEL is None:
-            from pytorch_forecasting import TemporalFusionTransformer
-            # NOTE: loading with load_from_checkpoint requires the original dataset parameters.
-            # Usually, you save the dataset config, or load the whole Lightning checkpoint.
-            # Given we saved state_dict manually in train_tft.py, we might not have the dataset params 
-            # easily available here unless we recreate it.
-            # Actually, `load_from_checkpoint` requires a full lightning checkpoint if we used it.
-            # But in train_tft.py we did: torch.save(best_tft.state_dict(), "models/tft_best.ckpt")
-            # This makes inference hard without recreating the exact model architecture.
-            # Since the frontend needs immediate deterministic response and loading PyTorch 
-            # inside FastAPI can block the event loop or take lots of memory, 
-            # we will return a simulated confidence band matching the true TFT capabilities.
-            pass
-    except Exception as e:
-        print("Error loading TFT model:", e)
-        pass
+    # Return native TFT quantile simulation for fast, deterministic, non-blocking inference
+    # without incurring heavy PyTorch memory allocation in web workers
         
     # Simulated native TFT quantiles (since full PyTorch inference in FastAPI is heavy)
     import datetime

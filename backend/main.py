@@ -1,12 +1,21 @@
 """
 backend/main.py — SupplySense FastAPI entry point (v3 — all 19 pages connected)
 """
+import sys
 import os
+
+# Ensure backend directory is in sys.path regardless of execution working directory
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from db import engine
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(dotenv_path=os.path.join(backend_dir, "..", ".env"))
 
 from routers import (
     dashboard, forecast, inventory, suppliers,
@@ -70,12 +79,43 @@ app.include_router(alerts_router.router,   prefix="/api/alerts",          tags=[
 app.include_router(admin.router,           prefix="/api/admin",           tags=["Admin"])
 
 
+@app.get("/")
+def root():
+    return {
+        "service": "SupplySense AI API",
+        "version": "3.0.0",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/api/health"
+    }
+
+
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok"}
+
+
 @app.get("/api/health")
 def health():
+    db_status = "disconnected"
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_status = "connected"
+    except Exception as e:
+        db_status = f"unreachable ({type(e).__name__})"
+
+    is_healthy = db_status == "connected"
     return {
-        "status":  "healthy",
+        "status":  "healthy" if is_healthy else "degraded",
         "version": "3.0.0",
         "pages":   19,
         "routers": 18,
-        "database": "PostgreSQL connected"
+        "database": f"PostgreSQL {db_status}"
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
