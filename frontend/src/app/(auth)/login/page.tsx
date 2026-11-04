@@ -1,16 +1,16 @@
 'use client'
 
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Loader2, ShieldCheck, Zap, TrendingUp, Users } from 'lucide-react'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { useDispatch } from 'react-redux'
-import { setUser } from '@/lib/store/authSlice'
+import { useDispatch, useSelector } from 'react-redux'
+import { setUser, selectIsAuthenticated } from '@/lib/store/authSlice'
 import { ROLE_PERMISSIONS, getRoleLabel } from '@/lib/auth/permissions'
 import type { Role } from '@/lib/auth/permissions'
 
@@ -36,12 +36,29 @@ const statsCards = [
   { icon: Zap, label: 'AI agents active', value: '8 agents', color: '#F59E0B' },
 ]
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const dispatch = useDispatch()
+  const { data: session, status } = useSession()
+  const isAuthenticated = useSelector(selectIsAuthenticated)
+
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [demoLoading, setDemoLoading] = useState<string | null>(null)
+
+  // Validate destination to prevent open-redirect vulnerabilities
+  const rawCallback = searchParams?.get('callbackUrl')
+  const callbackUrl = (rawCallback && rawCallback.startsWith('/') && !rawCallback.startsWith('//'))
+    ? rawCallback
+    : '/'
+
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    if (status === 'authenticated' || isAuthenticated) {
+      router.replace(callbackUrl)
+    }
+  }, [status, isAuthenticated, callbackUrl, router])
 
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -50,35 +67,42 @@ export default function LoginPage() {
   const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true)
     try {
-      const demoUser = demoUsers.find(
-        (u) => u.email === data.email && u.password === data.password
-      )
-      if (demoUser) {
-        dispatch(
-          setUser({
-            id: `user-${demoUser.role}`,
-            name: demoUser.name,
-            email: demoUser.email,
-            role: demoUser.role,
-            permissions: ROLE_PERMISSIONS[demoUser.role],
-            department: getRoleLabel(demoUser.role),
-            lastLogin: new Date().toISOString(),
-          })
-        )
-        toast.success(`Welcome back, ${demoUser.name}!`)
-        router.push('/')
-      } else {
-        const result = await signIn('credentials', {
-          email: data.email,
-          password: data.password,
-          redirect: false,
-        })
-        if (result?.error) {
-          toast.error('Invalid credentials. Try a demo account below.')
-        } else if (result?.ok) {
-          router.push('/')
-        }
+      // 1. Establish persistent NextAuth session
+      const result = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      })
+
+      if (result?.error) {
+        toast.error('Invalid credentials. Please try again or use a demo account below.')
+        setIsLoading(false)
+        return
       }
+
+      // 2. Identify user role & metadata
+      const demoUser = demoUsers.find(
+        (u) => u.email.toLowerCase() === data.email.toLowerCase()
+      )
+      const role: Role = demoUser?.role || 'admin'
+      const userObj = {
+        id: demoUser ? `user-${demoUser.role}` : `user-${Date.now()}`,
+        name: demoUser?.name || data.email.split('@')[0],
+        email: data.email,
+        role,
+        permissions: ROLE_PERMISSIONS[role],
+        department: getRoleLabel(role),
+        lastLogin: new Date().toISOString(),
+      }
+
+      // 3. Persist to Redux and localStorage
+      dispatch(setUser(userObj))
+      try {
+        localStorage.setItem('supplysense_session', JSON.stringify(userObj))
+      } catch {}
+
+      toast.success(`Welcome back, ${userObj.name}!`)
+      router.replace(callbackUrl)
     } catch {
       toast.error('Login failed. Please try again.')
     } finally {
@@ -90,9 +114,16 @@ export default function LoginPage() {
     setDemoLoading(demoUser.role)
     setValue('email', demoUser.email)
     setValue('password', demoUser.password)
-    await new Promise((r) => setTimeout(r, 600))
-    dispatch(
-      setUser({
+
+    try {
+      // 1. Establish NextAuth session
+      await signIn('credentials', {
+        email: demoUser.email,
+        password: demoUser.password,
+        redirect: false,
+      })
+
+      const userObj = {
         id: `user-${demoUser.role}`,
         name: demoUser.name,
         email: demoUser.email,
@@ -100,19 +131,40 @@ export default function LoginPage() {
         permissions: ROLE_PERMISSIONS[demoUser.role],
         department: getRoleLabel(demoUser.role),
         lastLogin: new Date().toISOString(),
-      })
-    )
-    toast.success(`Signed in as ${demoUser.name} (${getRoleLabel(demoUser.role)})`)
-    setDemoLoading(null)
-    router.push('/')
+      }
+
+      // 2. Persist to Redux and localStorage
+      dispatch(setUser(userObj))
+      try {
+        localStorage.setItem('supplysense_session', JSON.stringify(userObj))
+      } catch {}
+
+      toast.success(`Signed in as ${demoUser.name} (${getRoleLabel(demoUser.role)})`)
+      router.replace(callbackUrl)
+    } catch {
+      toast.error('Demo sign-in failed. Please try again.')
+    } finally {
+      setDemoLoading(null)
+    }
   }
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     try {
-      await signIn('google', { callbackUrl: '/' })
-    } catch {
-      toast.error('Google sign-in failed.')
+      // Check whether Google OAuth is configured
+      const providers = await fetch('/api/auth/providers').then((r) => r.json()).catch(() => ({}))
+      if (!providers?.google) {
+        toast.error(
+          'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Google Cloud Console and environment variables.',
+          { duration: 6000 }
+        )
+        setIsLoading(false)
+        return
+      }
+
+      await signIn('google', { callbackUrl })
+    } catch (err: any) {
+      toast.error('Google sign-in could not be initiated: ' + (err?.message || 'Unknown error'))
       setIsLoading(false)
     }
   }
@@ -139,114 +191,81 @@ export default function LoginPage() {
             className="absolute bottom-24 right-0 w-80 h-80 rounded-full opacity-8"
             style={{ background: 'radial-gradient(circle, #00D4AA 0%, transparent 70%)' }}
           />
-          {/* Grid lines */}
-          <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3B8EE8" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
         </div>
 
-        {/* Logo */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #3B8EE8 0%, #00D4AA 100%)' }}
-            >
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M11 2L19 7V15L11 20L3 15V7L11 2Z" stroke="white" strokeWidth="1.5" fill="none" />
-                <path d="M11 6L16 9V13L11 16L6 13V9L11 6Z" fill="white" fillOpacity="0.4" />
-                <circle cx="11" cy="11" r="2" fill="white" />
-              </svg>
-            </div>
-            <div>
-              <span className="text-xl font-bold text-white tracking-tight">SupplySense</span>
-              <div className="text-xs text-blue-400 font-mono tracking-widest uppercase">AI Supply Chain OS</div>
-            </div>
+        {/* Brand */}
+        <div className="relative z-10 flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #3B8EE8 0%, #00D4AA 100%)' }}
+          >
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <path d="M11 2L19 7V15L11 20L3 15V7L11 2Z" stroke="white" strokeWidth="1.5" fill="none" />
+              <circle cx="11" cy="11" r="2" fill="white" />
+              <path d="M11 2V11M19 7L11 11M3 7L11 11" stroke="white" strokeWidth="1" opacity="0.6" />
+            </svg>
+          </div>
+          <div>
+            <span className="text-xl font-bold text-white tracking-tight">SupplySense</span>
+            <span className="text-xs px-2 py-0.5 rounded-full ml-2 font-medium" style={{ background: 'rgba(59,142,232,0.15)', color: '#3B8EE8', border: '1px solid rgba(59,142,232,0.3)' }}>
+              SC-OS v3.0
+            </span>
           </div>
         </div>
 
-        {/* Main copy */}
-        <div className="relative z-10 space-y-6">
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="text-4xl font-bold leading-tight"
-            style={{ color: '#F1F5F9' }}
-          >
-            The Intelligence Layer for
-            <br />
-            <span style={{ background: 'linear-gradient(135deg, #3B8EE8 0%, #00D4AA 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              Modern Supply Chains
+        {/* Hero Copy */}
+        <div className="relative z-10 my-auto py-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-6" style={{ background: 'rgba(0,212,170,0.1)', color: '#00D4AA', border: '1px solid rgba(0,212,170,0.25)' }}>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" />
+            Autonomous AI Supply Chain Intelligence
+          </div>
+          <h1 className="text-4xl xl:text-5xl font-black text-white leading-tight tracking-tight">
+            Next-Gen Supply Chain <br />
+            <span style={{ background: 'linear-gradient(90deg, #3B8EE8 0%, #00D4AA 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Command Center
             </span>
-          </motion.h1>
+          </h1>
+          <p className="mt-4 text-base leading-relaxed" style={{ color: '#94A3B8' }}>
+            Empower enterprise operations with autonomous multi-agent intelligence, multi-tier supply chain visibility, predictive demand modeling, and real-time inventory tracking.
+          </p>
 
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="text-base leading-relaxed"
-            style={{ color: '#94A3B8' }}
-          >
-            8 specialized AI agents working 24/7 to optimize your demand forecasts,
-            inventory positions, procurement decisions, and supplier relationships — all in one unified platform.
-          </motion.p>
-
-          {/* Stats cards */}
-          <div className="grid gap-4 mt-8">
-            {statsCards.map((card, i) => (
-              <motion.div
-                key={card.label}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.5 + i * 0.1, duration: 0.5 }}
-                className="flex items-center gap-4 p-4 rounded-xl"
+          {/* Metrics row */}
+          <div className="grid grid-cols-3 gap-4 mt-8">
+            {statsCards.map((stat) => (
+              <div
+                key={stat.label}
+                className="p-4 rounded-xl"
                 style={{
-                  background: 'rgba(17,24,39,0.6)',
-                  border: '1px solid rgba(59,142,232,0.12)',
+                  background: 'rgba(17,24,39,0.7)',
+                  border: '1px solid #1E2D45',
                   backdropFilter: 'blur(8px)',
                 }}
               >
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${card.color}20`, border: `1px solid ${card.color}30` }}
-                >
-                  <card.icon size={18} style={{ color: card.color }} />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-white">{card.value}</div>
-                  <div className="text-sm" style={{ color: '#64748B' }}>{card.label}</div>
-                </div>
-              </motion.div>
+                <stat.icon size={18} style={{ color: stat.color, marginBottom: 8 }} />
+                <div className="text-xl font-bold text-white">{stat.value}</div>
+                <div className="text-xs mt-0.5" style={{ color: '#64748B' }}>{stat.label}</div>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom label */}
-        <div className="relative z-10 flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-sm" style={{ color: '#64748B' }}>
-            All 8 AI agents operational · Updated just now
-          </span>
+        {/* Footer info */}
+        <div className="relative z-10 flex items-center justify-between text-xs" style={{ color: '#475569' }}>
+          <span>Enterprise SSO &amp; Role-Based Access Control</span>
+          <span>SOC2 Type II • ISO 27001 Certified</span>
         </div>
       </motion.div>
 
-      {/* ── Right Panel (Login Form) ── */}
+      {/* ── Right Panel ── */}
       <motion.div
-        initial={{ x: 60, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="flex-1 flex items-center justify-center p-8"
-        style={{ background: '#0A0F1E' }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="flex-1 flex flex-col justify-center px-6 sm:px-12 xl:px-20 py-12"
       >
-        <div className="w-full max-w-md space-y-6">
-          {/* Mobile logo */}
-          <div className="flex items-center gap-3 lg:hidden mb-8">
+        <div className="w-full max-w-md mx-auto space-y-6">
+          {/* Mobile brand header */}
+          <div className="lg:hidden flex items-center gap-2 mb-2">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #3B8EE8 0%, #00D4AA 100%)' }}
@@ -408,5 +427,17 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0F1E' }}>
+        <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }

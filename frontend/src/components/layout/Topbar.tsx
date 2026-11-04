@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectUser, logout } from '@/lib/store/authSlice'
+import { signOut } from 'next-auth/react'
 import {
   selectNotifications,
   selectUnreadCount,
@@ -140,10 +141,13 @@ export function Topbar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [openCommandPalette])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('supplysense_session')
+    } catch {}
     dispatch(logout())
     toast.success('Signed out successfully')
-    router.push('/login')
+    await signOut({ redirect: true, callbackUrl: '/login' })
   }
 
   const recentAlerts = aiAlerts.slice(0, 5)

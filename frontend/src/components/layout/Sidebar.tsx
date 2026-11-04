@@ -33,6 +33,7 @@ import { selectUser, logout } from '@/lib/store/authSlice'
 import { usePermission } from '@/lib/auth/permissions'
 import { PERMISSIONS, getRoleLabel, getRoleBadgeColor } from '@/lib/auth/permissions'
 import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 
 interface NavItem {
@@ -136,10 +137,13 @@ export function Sidebar() {
     return user.permissions?.includes(permission as never) || false
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('supplysense_session')
+    } catch {}
     dispatch(logout())
     toast.success('Signed out successfully')
-    router.push('/login')
+    await signOut({ redirect: true, callbackUrl: '/login' })
   }
 
   const isActive = (href: string) => {

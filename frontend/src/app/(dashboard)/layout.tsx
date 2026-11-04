@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
+import { useSession } from 'next-auth/react'
 import { selectIsAuthenticated, selectUser } from '@/lib/store/authSlice'
 import { selectSidebarCollapsed } from '@/lib/store/uiSlice'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -15,18 +16,44 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
+  const { data: session, status } = useSession()
   const isAuthenticated = useSelector(selectIsAuthenticated)
   const user = useSelector(selectUser)
   const sidebarCollapsed = useSelector(selectSidebarCollapsed)
+  const [isHydrated, setIsHydrated] = useState(false)
 
-  // Auth guard
+  // Mark client hydration complete
   useEffect(() => {
-    if (!isAuthenticated && !user) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, user, router])
+    setIsHydrated(true)
+  }, [])
 
-  if (!isAuthenticated && !user) {
+  // Auth Guard with session initialization protection
+  useEffect(() => {
+    // 1. Never redirect while authentication is still initializing or checking cookies
+    if (!isHydrated || status === 'loading') {
+      return
+    }
+
+    // 2. If authenticated via NextAuth or Redux/localStorage, allow access
+    const hasSession = Boolean(session?.user || isAuthenticated || user)
+    if (hasSession) {
+      return
+    }
+
+    // 3. Only redirect when confirmed unauthenticated, preserving current URL and query params
+    if (status === 'unauthenticated' && !hasSession) {
+      const search = typeof window !== 'undefined' ? window.location.search : ''
+      const currentTarget = pathname + search
+      const loginUrl = `/login?callbackUrl=${encodeURIComponent(currentTarget)}`
+      router.replace(loginUrl)
+    }
+  }, [isHydrated, status, session, isAuthenticated, user, pathname, router])
+
+  const hasSession = Boolean(session?.user || isAuthenticated || user)
+
+  // Loading screen during verification
+  if (!hasSession && (!isHydrated || status === 'loading')) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -37,10 +64,15 @@ export default function DashboardLayout({
             className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
             style={{ borderColor: '#3B8EE8', borderTopColor: 'transparent' }}
           />
-          <p className="text-sm" style={{ color: '#64748B' }}>Authenticating…</p>
+          <p className="text-sm font-medium" style={{ color: '#64748B' }}>Verifying session…</p>
         </div>
       </div>
     )
+  }
+
+  // If unauthenticated and redirect is in progress, render null to prevent layout flicker
+  if (!hasSession && status === 'unauthenticated') {
+    return null
   }
 
   const sidebarWidth = sidebarCollapsed ? 64 : 240
