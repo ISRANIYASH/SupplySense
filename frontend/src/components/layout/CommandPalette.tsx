@@ -18,18 +18,24 @@ interface CommandItem {
 }
 
 const PAGES: Array<Omit<CommandItem, 'action' | 'group'>> = [
-  { id: 'dashboard', label: 'Command Center', description: 'Executive dashboard', icon: LayoutDashboard },
-  { id: 'inventory', label: 'Inventory', description: 'SKU management & stock levels', icon: FileText },
-  { id: 'procurement', label: 'Procurement', description: 'Purchase orders & spend', icon: FileText },
-  { id: 'suppliers', label: 'Supplier Intelligence', description: 'Supplier risk & performance', icon: FileText },
-  { id: 'demand-forecast', label: 'Demand Forecast', description: 'AI demand predictions', icon: Zap },
-  { id: 'risk', label: 'Risk Radar', description: 'Supply chain risk monitoring', icon: FileText },
-  { id: 'agents', label: 'AI Agents', description: 'Agent control room', icon: Zap },
-  { id: 'copilot', label: 'AI Copilot', description: 'Chat with supply chain AI', icon: Zap },
-  { id: 'mlops', label: 'MLOps Center', description: 'Model registry & experiments', icon: FileText },
-  { id: 'decisions', label: 'Decision Log', description: 'AI decision approvals', icon: FileText },
-  { id: 'audit', label: 'Audit Trail', description: 'Compliance & event log', icon: FileText },
-  { id: 'analytics-lab', label: 'Analytics Lab', description: 'Custom reports & analysis', icon: FileText },
+  { id: 'dashboard', label: 'Dashboard', description: 'Executive dashboard', icon: LayoutDashboard },
+  { id: 'forecast', label: 'Demand Prediction', description: 'AI demand predictions', icon: Zap },
+  { id: 'inventory', label: 'Inventory Management', description: 'SKU management & stock levels', icon: FileText },
+  { id: 'procurement', label: 'Purchase Management', description: 'Purchase orders & spend', icon: FileText },
+  { id: 'suppliers', label: 'Supplier Management', description: 'Supplier risk & performance', icon: FileText },
+  { id: 'logistics', label: 'Delivery Tracking', description: 'Shipment and delivery tracking', icon: FileText },
+  { id: 'warehouse', label: 'Warehouse Management', description: 'Storage and facility overview', icon: FileText },
+  { id: 'market', label: 'Market Trends', description: 'Commodity prices & trends', icon: FileText },
+  { id: 'weather', label: 'Weather Updates', description: 'Weather impact & alerts', icon: FileText },
+  { id: 'risk', label: 'Risk Alerts', description: 'Supply chain risk monitoring', icon: FileText },
+  { id: 'copilot', label: 'AI Assistant', description: 'Chat with supply chain AI', icon: Zap },
+  { id: 'simulator', label: 'What-if Analysis', description: 'Supply chain simulation', icon: FileText },
+  { id: 'explainability', label: 'Prediction Explanation', description: 'Model interpretability', icon: FileText },
+  { id: 'mlops', label: 'Model Performance', description: 'Model registry & experiments', icon: FileText },
+  { id: 'decisions', label: 'Activity History', description: 'Decision approvals & event log', icon: FileText },
+  { id: 'analytics', label: 'Reports & Analytics', description: 'Custom reports & analysis', icon: FileText },
+  { id: 'alerts', label: 'Alert Center', description: 'Active alerts & notifications', icon: FileText },
+  { id: 'admin', label: 'Admin Center', description: 'User administration & settings', icon: FileText },
 ]
 
 const QUICK_ACTIONS = [
@@ -100,7 +106,7 @@ export function CommandPalette() {
       ...a,
       group: 'Actions' as const,
       action: () => {
-        if (a.id === 'run-forecast') navigate('/demand-forecast')
+        if (a.id === 'run-forecast') navigate('/forecast')
         else if (a.id === 'approve-all') navigate('/decisions')
         else close()
       },

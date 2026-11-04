@@ -51,30 +51,30 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'OVERVIEW',
+    label: 'Overview',
     items: [
-      { href: '/', label: 'Control Tower', icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_READ },
-      { href: '/forecast', label: 'Demand Forecast', icon: TrendingUp, permission: PERMISSIONS.FORECAST_READ },
-      { href: '/inventory', label: 'Inventory Brain', icon: Package, permission: PERMISSIONS.INVENTORY_READ },
+      { href: '/', label: 'Dashboard', icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_READ },
+      { href: '/forecast', label: 'Demand Prediction', icon: TrendingUp, permission: PERMISSIONS.FORECAST_READ },
+      { href: '/inventory', label: 'Inventory Management', icon: Package, permission: PERMISSIONS.INVENTORY_READ },
     ],
   },
   {
-    label: 'OPERATIONS',
+    label: 'Management',
     items: [
-      { href: '/procurement', label: 'Procurement AI', icon: ShoppingCart, permission: PERMISSIONS.PROCUREMENT_READ },
-      { href: '/suppliers', label: 'Supplier Hub', icon: Building2, permission: PERMISSIONS.SUPPLIERS_READ },
-      { href: '/logistics', label: 'Logistics', icon: Truck, permission: PERMISSIONS.SUPPLY_MAP_READ },
-      { href: '/warehouse', label: 'Warehouse Twin', icon: Boxes, permission: PERMISSIONS.INVENTORY_READ },
+      { href: '/procurement', label: 'Purchase Management', icon: ShoppingCart, permission: PERMISSIONS.PROCUREMENT_READ },
+      { href: '/suppliers', label: 'Supplier Management', icon: Building2, permission: PERMISSIONS.SUPPLIERS_READ },
+      { href: '/logistics', label: 'Delivery Tracking', icon: Truck, permission: PERMISSIONS.SUPPLY_MAP_READ },
+      { href: '/warehouse', label: 'Warehouse Management', icon: Boxes, permission: PERMISSIONS.INVENTORY_READ },
     ],
   },
   {
-    label: 'INTELLIGENCE',
+    label: 'Insights',
     items: [
-      { href: '/market', label: 'Market Intel', icon: TrendingDown, permission: PERMISSIONS.ANALYTICS_READ },
-      { href: '/weather', label: 'Weather Intel', icon: CloudRain, permission: PERMISSIONS.RISK_READ },
+      { href: '/market', label: 'Market Trends', icon: TrendingDown, permission: PERMISSIONS.ANALYTICS_READ },
+      { href: '/weather', label: 'Weather Updates', icon: CloudRain, permission: PERMISSIONS.RISK_READ },
       {
         href: '/risk',
-        label: 'Risk Center',
+        label: 'Risk Alerts',
         icon: AlertTriangle,
         badge: '3',
         badgeColor: '#EF4444',
@@ -83,37 +83,32 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'AI TOOLS',
+    label: 'Tools',
     items: [
       {
         href: '/copilot',
-        label: 'AI Copilot',
+        label: 'AI Assistant',
         icon: MessageSquare,
         badge: 'NEW',
         badgeColor: '#00D4AA',
         permission: PERMISSIONS.COPILOT_USE,
       },
-      { href: '/simulator', label: 'Simulator', icon: SlidersHorizontal, permission: PERMISSIONS.ANALYTICS_READ },
-      { href: '/explainability', label: 'Explainable AI', icon: Bot, permission: PERMISSIONS.ANALYTICS_READ },
-    ],
-  },
-  {
-    label: 'MLOPS',
-    items: [
-      { href: '/mlops', label: 'MLOps Center', icon: FlaskConical, permission: PERMISSIONS.MLOPS_READ },
+      { href: '/simulator', label: 'What-if Analysis', icon: SlidersHorizontal, permission: PERMISSIONS.ANALYTICS_READ },
+      { href: '/explainability', label: 'Prediction Explanation', icon: Bot, permission: PERMISSIONS.ANALYTICS_READ },
+      { href: '/mlops', label: 'Model Performance', icon: FlaskConical, permission: PERMISSIONS.MLOPS_READ },
       {
         href: '/decisions',
-        label: 'Decision Log',
+        label: 'Activity History',
         icon: ListChecks,
         badge: '5',
         badgeColor: '#3B8EE8',
         permission: PERMISSIONS.DECISIONS_READ,
       },
-      { href: '/analytics', label: 'Analytics Lab', icon: BarChart3, permission: PERMISSIONS.ANALYTICS_READ },
+      { href: '/analytics', label: 'Reports & Analytics', icon: BarChart3, permission: PERMISSIONS.ANALYTICS_READ },
     ],
   },
   {
-    label: 'SYSTEM',
+    label: 'System',
     items: [
       {
         href: '/alerts',
@@ -263,7 +258,7 @@ export function Sidebar() {
                             exit={{ opacity: 0, width: 0 }}
                             className="flex items-center justify-between flex-1 overflow-hidden"
                           >
-                            <span className="text-sm font-medium whitespace-nowrap">
+                            <span className="text-sm font-medium whitespace-nowrap truncate">
                               {item.label}
                             </span>
                             {item.badge && (

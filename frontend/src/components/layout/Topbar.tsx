@@ -38,24 +38,32 @@ function useBreadcrumb() {
   const segments = pathname.split('/').filter(Boolean)
 
   const labels: Record<string, string> = {
-    'supply-map': 'Supply Map',
-    'demand-forecast': 'Demand Forecast',
-    inventory: 'Inventory',
-    procurement: 'Procurement',
-    suppliers: 'Suppliers',
-    risk: 'Risk Radar',
-    agents: 'AI Agents',
-    copilot: 'Copilot',
-    optimization: 'Optimizer',
-    'analytics-lab': 'Analytics Lab',
-    mlops: 'MLOps Center',
-    decisions: 'Decision Log',
-    audit: 'Audit Trail',
+    'supply-map': 'Delivery Tracking',
+    'demand-forecast': 'Demand Prediction',
+    forecast: 'Demand Prediction',
+    inventory: 'Inventory Management',
+    procurement: 'Purchase Management',
+    suppliers: 'Supplier Management',
+    logistics: 'Delivery Tracking',
+    warehouse: 'Warehouse Management',
+    market: 'Market Trends',
+    weather: 'Weather Updates',
+    risk: 'Risk Alerts',
+    agents: 'AI Assistant',
+    copilot: 'AI Assistant',
+    simulator: 'What-if Analysis',
+    explainability: 'Prediction Explanation',
+    mlops: 'Model Performance',
+    decisions: 'Activity History',
+    analytics: 'Reports & Analytics',
+    'analytics-lab': 'Reports & Analytics',
+    alerts: 'Alert Center',
+    audit: 'Activity History',
     settings: 'Settings',
-    admin: 'Admin Panel',
+    admin: 'Admin Center',
   }
 
-  const crumbs = [{ label: 'Command Center', href: '/' }]
+  const crumbs = [{ label: 'Dashboard', href: '/' }]
   if (segments.length > 0 && segments[0] !== '') {
     crumbs.push({ label: labels[segments[0]] ?? segments[0], href: `/${segments[0]}` })
   }
