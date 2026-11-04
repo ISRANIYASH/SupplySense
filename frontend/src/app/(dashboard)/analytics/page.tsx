@@ -9,8 +9,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Analytics Lab" 
-        subtitle="AI-powered insights and analytics" 
+        title="Reports & Analytics" 
+        subtitle="Explore supply chain reports, trends, and analytical results." 
         badge={<Badge variant="HIGH">Active</Badge>} 
       />
       

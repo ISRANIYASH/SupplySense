@@ -168,8 +168,8 @@ export default function ProcurementPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Procurement Analytics</h1>
-          <p style={{ color: C.textMuted, fontSize: 14 }}>Shipping performance, spend analysis, and delivery trends</p>
+          <h1 style={{ color: C.textPrimary, fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Purchase Management</h1>
+          <p style={{ color: C.textMuted, fontSize: 14 }}>Monitor purchase orders and procurement activities.</p>
         </div>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,

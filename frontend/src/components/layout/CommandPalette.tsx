@@ -115,7 +115,7 @@ export function CommandPalette() {
       (q) => !query || q.label.toLowerCase().includes(query.toLowerCase())
     ).map((q) => ({
       ...q,
-      description: 'Ask AI Copilot',
+      description: 'Ask AI Assistant',
       group: 'AI Queries' as const,
       action: () => navigate('/copilot'),
     })),

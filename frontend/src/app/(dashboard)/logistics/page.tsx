@@ -82,8 +82,8 @@ export default function LogisticsPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Logistics Tracker</h1>
-          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Real-time shipment tracking across India</p>
+          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Delivery Tracking</h1>
+          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Monitor deliveries, transportation, and shipment status.</p>
         </div>
         <span style={{ fontSize: 11, fontWeight: 700, color: C.teal, background: `${C.teal}18`, border: `1px solid ${C.teal}30`, borderRadius: 6, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Wifi size={10} /> LIVE DATA

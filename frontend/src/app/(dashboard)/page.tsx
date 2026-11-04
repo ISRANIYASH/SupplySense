@@ -155,8 +155,8 @@ export default function ControlTowerPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Control Tower</h1>
-          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Real-time supply chain intelligence — PostgreSQL live data</p>
+          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Dashboard</h1>
+          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Monitor overall supply chain performance and key statistics.</p>
         </div>
         <LiveBadge />
       </div>

@@ -142,7 +142,8 @@ export default function SuppliersPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 36 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 28, fontWeight: 800 }}>Supplier Intelligence</h1>
+          <h1 style={{ color: C.textPrimary, fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Supplier Management</h1>
+          <p style={{ color: C.textMuted, fontSize: 14 }}>View supplier information and evaluate supplier performance.</p>
         </div>
       </div>
 

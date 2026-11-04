@@ -6,7 +6,7 @@ import React, { useState } from 'react'
 const C = { bg:'#0A0F1E', surface:'#111827', surface2:'#1C2537', border:'#1E2D45', blue:'#3B8EE8', teal:'#00D4AA', warning:'#F59E0B', danger:'#EF4444', success:'#10B981', purple:'#8B5CF6', textPrimary:'#F1F5F9', textSecondary:'#CBD5E1', textMuted:'#64748B' } as const
 
 function LiveBadge() {
-  return <span style={{fontSize:11,fontWeight:700,color:C.purple,background:`${C.purple}18`,border:`1px solid ${C.purple}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🤖 AI COPILOT</span>
+  return <span style={{fontSize:11,fontWeight:700,color:C.purple,background:`${C.purple}18`,border:`1px solid ${C.purple}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🤖 AI ASSISTANT</span>
 }
 
 export default function CopilotPage() {
@@ -38,8 +38,8 @@ export default function CopilotPage() {
     <div style={{minHeight:'100vh',background:C.bg,padding:'28px 32px',fontFamily:"'Inter',sans-serif"}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:28}}>
         <div>
-          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>AI Copilot</h1>
-          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Rule-based AI with real PostgreSQL data. GPT-4o integration pending.</p>
+          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>AI Assistant</h1>
+          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Interact with the AI assistant to understand supply chain data.</p>
         </div>
         <LiveBadge />
       </div>
@@ -50,7 +50,7 @@ export default function CopilotPage() {
             {messages.length===0 && (
               <div style={{margin:'auto',textAlign:'center',color:C.textMuted}}>
                 <div style={{fontSize:40,marginBottom:16}}>🤖</div>
-                <h3>SupplySense Copilot</h3>
+                <h3>SupplySense AI Assistant</h3>
                 <p style={{fontSize:13}}>Ask me about your supply chain data.</p>
               </div>
             )}

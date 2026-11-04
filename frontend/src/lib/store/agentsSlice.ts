@@ -141,7 +141,7 @@ const initialAgents: AgentInfo[] = [
   },
   {
     id: 'copilot-agent',
-    name: 'AI Copilot',
+    name: 'AI Assistant',
     description: 'GPT-4o powered natural language SC insights',
     status: 'idle',
     lastAction: 'Answered 12 user queries on inventory status',

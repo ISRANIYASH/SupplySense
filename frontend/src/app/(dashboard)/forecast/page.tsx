@@ -145,8 +145,8 @@ export default function ForecastPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Demand Forecast</h1>
-          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Temporal Fusion Transformer (TFT) Multi-Series Model</p>
+          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Demand Prediction</h1>
+          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Analyze historical demand and predict future material requirements.</p>
         </div>
         <LiveBadge />
       </div>

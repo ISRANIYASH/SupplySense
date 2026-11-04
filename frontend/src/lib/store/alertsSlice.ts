@@ -74,7 +74,7 @@ const mockAlerts: SystemAlert[] = [
     message: 'TFT Forecaster model retrained. MAPE improved from 5.0% to 3.8% (-1.2%).',
     timestamp: new Date(Date.now() - 3600000).toISOString(),
     acknowledged: false,
-    source: 'MLOps Center',
+    source: 'Model Performance',
     actionRequired: false,
   },
   {

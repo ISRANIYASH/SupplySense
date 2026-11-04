@@ -178,8 +178,8 @@ export default function RiskPage() {
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:28}}>
           <div>
-            <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:'0 0 4px'}}>Risk Management Center</h1>
-            <p style={{color:C.textMuted,fontSize:13,margin:0}}>Real-time supply chain risk assessment and supplier monitoring</p>
+            <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:'0 0 4px'}}>Risk Alerts</h1>
+            <p style={{color:C.textMuted,fontSize:13,margin:0}}>Identify possible inventory, supplier, delivery, and market risks.</p>
           </div>
           <LiveBadge/>
         </div>

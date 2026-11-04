@@ -39,8 +39,8 @@ export default function WeatherPage() {
     <div style={{minHeight:'100vh',background:C.bg,padding:'28px 32px',fontFamily:"'Inter',sans-serif"}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:28}}>
         <div>
-          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>Weather Intelligence</h1>
-          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Weather-demand correlation analysis</p>
+          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>Weather Updates</h1>
+          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>View weather information relevant to supply chain operations.</p>
         </div>
         <LiveBadge />
       </div>

@@ -81,10 +81,8 @@ export default function MarketPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Market Intelligence</h1>
-          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>
-            Live commodity prices · AI signals · {liveSource === 'live' ? 'Yahoo Finance live data' : 'Historical PostgreSQL data'}
-          </p>
+          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Market Trends</h1>
+          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Analyze commodity prices and market trends.</p>
         </div>
         <LiveBadge />
       </div>

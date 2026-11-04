@@ -12,7 +12,7 @@ function Skeleton({h=20,w='100%'}:{h?:number,w?:string}) {
   return <div style={{height:h,width:w,background:C.surface2,borderRadius:6,animation:'pulse 1.5s ease-in-out infinite'}}/>
 }
 function LiveBadge() {
-  return <span style={{fontSize:11,fontWeight:700,color:C.purple,background:`${C.purple}18`,border:`1px solid ${C.purple}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🧪 SIMULATION</span>
+  return <span style={{fontSize:11,fontWeight:700,color:C.purple,background:`${C.purple}18`,border:`1px solid ${C.purple}30`,borderRadius:6,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>🧪 WHAT-IF ANALYSIS</span>
 }
 function KpiTile({label,value,sub,color=C.blue,loading}:{label:string,value:string|number,sub?:string,color?:string,loading?:boolean}) {
   return <GlassCard style={{padding:20}}><p style={{color:C.textMuted,fontSize:11,margin:'0 0 6px',textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</p>{loading?<Skeleton h={28} w='120px'/>:<p style={{color:color,fontSize:24,fontWeight:700,margin:'0 0 4px'}}>{value}</p>}{sub&&<p style={{color:C.textMuted,fontSize:11,margin:0}}>{sub}</p>}</GlassCard>
@@ -45,8 +45,8 @@ export default function SimulatorPage() {
     <div style={{minHeight:'100vh',background:C.bg,padding:'28px 32px',fontFamily:"'Inter',sans-serif"}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:28}}>
         <div>
-          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>Scenario Simulator</h1>
-          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Apply multipliers to real baseline data</p>
+          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>What-if Analysis</h1>
+          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Explore hypothetical changes in demand, inventory, and procurement.</p>
         </div>
         <LiveBadge />
       </div>

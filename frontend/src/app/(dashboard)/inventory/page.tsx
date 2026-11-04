@@ -200,8 +200,8 @@ export default function InventoryPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Inventory Intelligence</h1>
-          <p style={{ color: C.textMuted, fontSize: 14 }}>Real-time stock levels, ABC analysis, and demand signals</p>
+          <h1 style={{ color: C.textPrimary, fontSize: 28, fontWeight: 800, marginBottom: 6 }}>Inventory Management</h1>
+          <p style={{ color: C.textMuted, fontSize: 14 }}>Manage products, categories, stock levels, and inventory records.</p>
         </div>
         <div style={{ display: 'flex', gap: 16 }}>
           <button onClick={() => setShowAddModal(true)} style={{ background: C.blue, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>+ Add Item</button>

@@ -38,8 +38,8 @@ export default function ExplainabilityPage() {
     <div style={{minHeight:'100vh',background:C.bg,padding:'28px 32px',fontFamily:"'Inter',sans-serif"}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:28}}>
         <div>
-          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>Explainable AI</h1>
-          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Model interpretability and demand drivers</p>
+          <h1 style={{color:C.textPrimary,fontSize:26,fontWeight:700,margin:0}}>Prediction Explanation</h1>
+          <p style={{color:C.textMuted,fontSize:13,margin:'4px 0 0'}}>Understand the factors influencing forecasts and predictions.</p>
         </div>
         <LiveBadge />
       </div>

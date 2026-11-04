@@ -70,8 +70,8 @@ export default function WarehousePage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
         <div>
-          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Warehouse Digital Twin</h1>
-          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Live warehouse layout, zone utilization & rack heatmap</p>
+          <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Warehouse Management</h1>
+          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Manage warehouse information and stock availability.</p>
         </div>
         <span style={{ fontSize: 11, fontWeight: 700, color: C.teal, background: `${C.teal}18`, border: `1px solid ${C.teal}30`, borderRadius: 6, padding: '3px 8px', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Wifi size={10} /> LIVE DATA
