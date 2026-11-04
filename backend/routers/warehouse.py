@@ -102,7 +102,7 @@ def grid_sample(db: Session = Depends(get_db)):
     rows = db.execute(text("""
         SELECT store_id, product_id, category,
                inventory_level, safety_stock, stock_status,
-               ROUND(inventory_level::numeric / NULLIF(safety_stock, 0), 2) AS health_ratio
+               ROUND((inventory_level::float / NULLIF(safety_stock, 0))::numeric, 2) AS health_ratio
         FROM fact_inventory
         ORDER BY store_id, product_id
         LIMIT 200

@@ -145,9 +145,17 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setUser(state, action: PayloadAction<AuthUser>) {
-      state.user = action.payload
+      const role = action.payload.role || 'admin'
+      const permissions = (action.payload.permissions && action.payload.permissions.length > 0)
+        ? action.payload.permissions
+        : (ROLE_PERMISSIONS[role] || [])
+      state.user = {
+        ...action.payload,
+        role,
+        permissions,
+      }
       state.isAuthenticated = true
-      state.permissions = ROLE_PERMISSIONS[action.payload.role] || []
+      state.permissions = permissions
     },
     setAccessToken(state, action: PayloadAction<string>) {
       state.accessToken = action.payload

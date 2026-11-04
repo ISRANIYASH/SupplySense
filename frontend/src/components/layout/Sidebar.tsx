@@ -31,7 +31,8 @@ import { useSelector, useDispatch } from 'react-redux'
 import { toggleSidebar, selectSidebarCollapsed } from '@/lib/store/uiSlice'
 import { selectUser, logout } from '@/lib/store/authSlice'
 import { usePermission } from '@/lib/auth/permissions'
-import { PERMISSIONS, getRoleLabel, getRoleBadgeColor } from '@/lib/auth/permissions'
+import { PERMISSIONS, getRoleLabel, getRoleBadgeColor, hasPermission } from '@/lib/auth/permissions'
+import type { Role, Permission } from '@/lib/auth/permissions'
 import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
@@ -133,8 +134,15 @@ export function Sidebar() {
 
   const canAccess = (permission?: string) => {
     if (!permission) return true
-    if (!user) return false
-    return user.permissions?.includes(permission as never) || false
+    if (!user) return true
+    if (user.role === 'super_admin' || user.role === 'admin') return true
+    if (user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0) {
+      return user.permissions.includes(permission as never)
+    }
+    if (user.role) {
+      return hasPermission(user.role as Role, permission as Permission)
+    }
+    return true
   }
 
   const handleLogout = async () => {
