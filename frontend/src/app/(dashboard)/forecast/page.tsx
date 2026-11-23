@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, ComposedChart, Line
 } from 'recharts'
-import { TrendingUp, RefreshCw, Wifi, AlertTriangle, ChevronDown, CheckCircle2, Calendar, Layers, BarChart2 } from 'lucide-react'
+import { TrendingUp, RefreshCw, Wifi, AlertTriangle, ChevronDown, CheckCircle2, Calendar, Layers, BarChart2, Info } from 'lucide-react'
 import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
 import { fetchDemandSeries, fetchTftPredict } from '@/lib/api/client'
 import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
@@ -15,7 +15,7 @@ const C = {
   success: '#10B981', purple: '#8B5CF6', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 } as const
 
-type ForecastInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly'
+type ForecastInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly'
 
 function GlassCard({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
@@ -26,7 +26,7 @@ function GlassCard({ children, style = {} }: { children: React.ReactNode; style?
 }
 
 function Skeleton({ h = 20, w = '100%' }: { h?: number; w?: string }) {
-  return <div style={{ height: h, width: w, background: C.surface2, borderRadius: 6 }} />
+  return <div style={{ height: h, width: w, background: C.surface2, borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
 }
 
 function LiveBadge() {
@@ -43,10 +43,25 @@ function Select({ value, onChange, options, label }: { value: string; onChange: 
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        style={{ appearance: 'none', background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 32px 8px 12px', color: C.textSecondary, fontSize: 13, cursor: 'pointer', minWidth: 160 }}
+        style={{
+          appearance: 'none',
+          background: C.surface2,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          padding: '8px 32px 8px 12px',
+          color: value ? C.textPrimary : C.textMuted,
+          fontSize: 13,
+          cursor: 'pointer',
+          minWidth: 160,
+          outline: 'none',
+        }}
       >
         <option value="">{label}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
+        {options.map(o => (
+          <option key={o} value={o} style={{ background: C.surface, color: C.textPrimary }}>
+            {o}
+          </option>
+        ))}
       </select>
       <ChevronDown size={14} color={C.textMuted} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
     </div>
@@ -55,23 +70,29 @@ function Select({ value, onChange, options, label }: { value: string; onChange: 
 
 function formatIntervalDate(dateStr: string, interval: ForecastInterval) {
   if (!dateStr) return ''
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return dateStr
+  const parts = dateStr.split('T')[0].split('-')
+  if (parts.length < 3) return dateStr
 
-  if (interval === 'daily') {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const year = parseInt(parts[0], 10)
+  const month = parseInt(parts[1], 10) - 1
+  const day = parseInt(parts[2], 10)
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const itv = interval.toLowerCase()
+
+  if (itv === 'yearly') {
+    return `${year}`
   }
-  if (interval === 'weekly') {
-    return `Wk of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+  if (itv === 'quarterly') {
+    const q = Math.floor(month / 3) + 1
+    return `Q${q} ${year}`
   }
-  if (interval === 'monthly') {
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  if (itv === 'monthly') {
+    return `${monthNames[month]} ${year}`
   }
-  if (interval === 'quarterly') {
-    const q = Math.floor(d.getMonth() / 3) + 1
-    return `Q${q} ${d.getFullYear()}`
+  if (itv === 'weekly') {
+    return `Wk of ${monthNames[month]} ${day}`
   }
-  return dateStr
+  return `${monthNames[month]} ${day}`
 }
 
 export default function ForecastPage() {
@@ -82,24 +103,39 @@ export default function ForecastPage() {
   
   const [selCat, setSelCat]         = useState('')
   const [selReg, setSelReg]         = useState('')
-  const [interval, setIntervalVal]  = useState<ForecastInterval>('daily')
+  const [duration, setDuration]     = useState<ForecastInterval>('daily')
   const [loading, setLoading]       = useState(true)
+  const [predsLoading, setPredsLoading] = useState(false)
   const [error, setError]           = useState<string | null>(null)
   const [modelType, setModelType]   = useState<'lstm' | 'tft'>('tft')
   const [tftPreds, setTftPreds]     = useState<any[]>([])
 
   const loadSeries = useCallback(() => {
     setLoading(true)
-    fetchDemandSeries(selCat || undefined, selReg || undefined, undefined, interval)
+    fetchDemandSeries(selCat || undefined, selReg || undefined, undefined, duration)
       .then((d: any) => { setSeries(Array.isArray(d) ? d : []); setLoading(false); setError(null) })
       .catch((e) => { setError(formatApiErrorMessage(e)); setLoading(false) })
-  }, [selCat, selReg, interval])
+  }, [selCat, selReg, duration])
 
   const loadTftPredictions = useCallback(() => {
-    fetchTftPredict(selCat || undefined, selReg || undefined, interval)
-      .then((d: any) => setTftPreds(Array.isArray(d) ? d : []))
-      .catch(() => setTftPreds([]))
-  }, [selCat, selReg, interval])
+    // Only generate predictions when both category and region are selected
+    if (!selCat || !selReg) {
+      setTftPreds([])
+      setPredsLoading(false)
+      return
+    }
+
+    setPredsLoading(true)
+    fetchTftPredict(selCat, selReg, duration)
+      .then((d: any) => {
+        setTftPreds(Array.isArray(d) ? d : [])
+        setPredsLoading(false)
+      })
+      .catch(() => {
+        setTftPreds([])
+        setPredsLoading(false)
+      })
+  }, [selCat, selReg, duration])
 
   useEffect(() => {
     Promise.all([
@@ -131,16 +167,16 @@ export default function ForecastPage() {
     }
   }, [loadSeries, modelType, loadTftPredictions])
 
-  // Combine actual and predicted data mapped with consistent interval formatting
+  // Combine actual historical and predicted data
   let combinedData: any[] = series.map(r => ({
-    date: formatIntervalDate(r.date, interval),
+    date: formatIntervalDate(r.date, duration),
     rawDate: r.date,
     actual: r.actual_demand,
   }))
 
-  if (modelType === 'tft' && tftPreds.length > 0) {
+  if (modelType === 'tft' && tftPreds.length > 0 && selCat && selReg) {
     const predMapped = tftPreds.map(p => ({
-      date: formatIntervalDate(p.date, interval),
+      date: formatIntervalDate(p.date, duration),
       rawDate: p.date,
       p50: p.p50,
       confidenceBand: [p.p10, p.p90]
@@ -154,7 +190,9 @@ export default function ForecastPage() {
 
   const totalHistorical = series.reduce((sum, r) => sum + (r.actual_demand || 0), 0)
   const totalForecasted = tftPreds.reduce((sum, p) => sum + (p.p50 || 0), 0)
-  const horizonLabel = interval === 'daily' ? '7 Days' : interval === 'weekly' ? '8 Weeks' : interval === 'monthly' ? '6 Months' : '4 Quarters'
+  const horizonLabel = duration === 'daily' ? '7 Days' : duration === 'weekly' ? '8 Weeks' : duration === 'monthly' ? '6 Months' : duration === 'quarterly' ? '4 Quarters' : '3 Years'
+
+  const isPredicting = Boolean(selCat && selReg)
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
@@ -163,7 +201,7 @@ export default function ForecastPage() {
         <div>
           <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Demand Prediction</h1>
           <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>
-            Forecast Analytics with multi-interval aggregation (Daily, Weekly, Monthly, Quarterly) and TFT quantile modeling.
+            Forecast Analytics with Temporal Fusion Transformer (TFT) across Daily, Weekly, Monthly, Quarterly, and Yearly horizons.
           </p>
         </div>
         <LiveBadge />
@@ -171,7 +209,7 @@ export default function ForecastPage() {
 
       {error && <ApiAlertBanner message={error} />}
 
-      {/* Comparison Banner */}
+      {/* Model Selection / Comparison Banner */}
       {comp && comp.tft && comp.tft.mape && comp.lstm && comp.lstm.mape && (
         <GlassCard style={{ padding: 16, marginBottom: 24, background: 'linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(59,142,232,0.1) 100%)', border: `1px solid ${C.success}40` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
@@ -188,13 +226,13 @@ export default function ForecastPage() {
             <div style={{ display: 'flex', background: C.surface2, borderRadius: 8, padding: 4, border: `1px solid ${C.border}` }}>
               <button 
                 onClick={() => setModelType('lstm')}
-                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, fontWeight: modelType === 'lstm' ? 600 : 400, background: modelType === 'lstm' ? C.border : 'transparent', color: modelType === 'lstm' ? C.textPrimary : C.textMuted }}
+                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, fontWeight: modelType === 'lstm' ? 600 : 400, background: modelType === 'lstm' ? C.border : 'transparent', color: modelType === 'lstm' ? C.textPrimary : C.textMuted, border: 'none', cursor: 'pointer' }}
               >
                 LSTM
               </button>
               <button 
                 onClick={() => setModelType('tft')}
-                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, fontWeight: modelType === 'tft' ? 600 : 400, background: modelType === 'tft' ? C.blue : 'transparent', color: modelType === 'tft' ? '#fff' : C.textMuted }}
+                style={{ padding: '6px 12px', fontSize: 12, borderRadius: 6, fontWeight: modelType === 'tft' ? 600 : 400, background: modelType === 'tft' ? C.blue : 'transparent', color: modelType === 'tft' ? '#fff' : C.textMuted, border: 'none', cursor: 'pointer' }}
               >
                 TFT (Active)
               </button>
@@ -220,89 +258,159 @@ export default function ForecastPage() {
         <GlassCard style={{ padding: 18 }}>
           <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Historical Volume</p>
           <p style={{ color: C.teal, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{Math.round(totalHistorical).toLocaleString()}</p>
-          <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>Across {series.length} {interval} periods</p>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>Across {series.length} {duration} periods</p>
         </GlassCard>
 
         <GlassCard style={{ padding: 18 }}>
           <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Projected Demand (P50)</p>
-          <p style={{ color: C.purple, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{Math.round(totalForecasted).toLocaleString()}</p>
+          <p style={{ color: C.purple, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>
+            {isPredicting && totalForecasted > 0 ? Math.round(totalForecasted).toLocaleString() : '—'}
+          </p>
           <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>Horizon: {horizonLabel}</p>
         </GlassCard>
       </div>
 
-      {/* Filter Toolbar: Time Interval Segmented Control + Category + Region */}
-      <GlassCard style={{ padding: 16, marginBottom: 20, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-        {/* Left side: Segmented Interval Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ color: C.textMuted, fontSize: 13, fontWeight: 600 }}>Aggregation:</span>
-          <div style={{ display: 'flex', background: C.surface2, borderRadius: 8, padding: 4, border: `1px solid ${C.border}`, gap: 4 }}>
-            {[
-              { id: 'daily', label: 'Daily' },
-              { id: 'weekly', label: 'Weekly' },
-              { id: 'monthly', label: 'Monthly' },
-              { id: 'quarterly', label: 'Quarterly' },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setIntervalVal(tab.id as ForecastInterval)}
-                style={{
-                  padding: '6px 14px',
-                  fontSize: 12,
-                  borderRadius: 6,
-                  fontWeight: interval === tab.id ? 600 : 400,
-                  background: interval === tab.id ? C.blue : 'transparent',
-                  color: interval === tab.id ? '#FFFFFF' : C.textMuted,
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+      {/* Filter Toolbar: Category + Region + Time Duration */}
+      <GlassCard style={{ padding: 16, marginBottom: 20, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {/* Category Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: C.textSecondary, fontSize: 13, fontWeight: 500 }}>Category:</span>
+            <Select
+              value={selCat}
+              onChange={(val) => setSelCat(val)}
+              options={categories}
+              label="Select Category..."
+            />
           </div>
-        </div>
 
-        {/* Right side: Category and Region filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ color: C.textMuted, fontSize: 13 }}>Filter:</span>
-          <Select value={selCat} onChange={setSelCat} options={categories} label="All Categories" />
-          <Select value={selReg} onChange={setSelReg} options={regions} label="All Regions" />
+          {/* Region Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: C.textSecondary, fontSize: 13, fontWeight: 500 }}>Region:</span>
+            <Select
+              value={selReg}
+              onChange={(val) => setSelReg(val)}
+              options={regions}
+              label="Select Region..."
+            />
+          </div>
+
+          {/* Time Duration Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: C.textSecondary, fontSize: 13, fontWeight: 500 }}>Time Duration:</span>
+            <Select
+              value={duration.charAt(0).toUpperCase() + duration.slice(1)}
+              onChange={(val) => {
+                if (val) setDuration(val.toLowerCase() as ForecastInterval)
+              }}
+              options={['Daily', 'Weekly', 'Monthly', 'Quarterly', 'Yearly']}
+              label="Select Duration..."
+            />
+          </div>
+
+          {/* Reset / Clear */}
           {(selCat || selReg) && (
             <button
               onClick={() => { setSelCat(''); setSelReg('') }}
-              style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.textMuted, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{
+                background: C.surface2,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: '8px 14px',
+                color: C.textMuted,
+                fontSize: 12,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.15s ease',
+              }}
             >
               <RefreshCw size={12} /> Clear
             </button>
           )}
-          {selCat && <span style={{ background: `${C.blue}20`, color: C.blue, padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{selCat}</span>}
-          {selReg && <span style={{ background: `${C.teal}20`, color: C.teal, padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{selReg}</span>}
+        </div>
+
+        {/* Right side: Active tags & guidance message */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {selCat && (
+            <span style={{ background: `${C.blue}20`, color: C.blue, border: `1px solid ${C.blue}30`, padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>
+              {selCat}
+            </span>
+          )}
+          {selReg && (
+            <span style={{ background: `${C.teal}20`, color: C.teal, border: `1px solid ${C.teal}30`, padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>
+              {selReg}
+            </span>
+          )}
+          <span style={{ background: `${C.purple}20`, color: C.purple, border: `1px solid ${C.purple}30`, padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 500 }}>
+            {duration.charAt(0).toUpperCase() + duration.slice(1)}
+          </span>
+
+          {(!selCat || !selReg) && (
+            <span style={{ fontSize: 12, color: C.warning, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={13} /> Select a category and region to see TFT predictions.
+            </span>
+          )}
         </div>
       </GlassCard>
 
-      {/* Main Forecast Chart */}
+      {/* Main Forecast Chart Card */}
       <GlassCard style={{ padding: 24, marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h3 style={{ color: C.textPrimary, fontSize: 16, fontWeight: 600, margin: 0 }}>
-              Forecast Analytics ({interval.toUpperCase()})
+              Forecast Analytics ({duration.toUpperCase()})
             </h3>
             <p style={{ color: C.textMuted, fontSize: 12, margin: '4px 0 0' }}>
-              Historical demand series and TFT probabilistic quantiles (P10, P50, P90) · {selCat || 'All Categories'} · {selReg || 'All Regions'}
+              Historical demand series and TFT probabilistic quantiles (P10, P50, P90) · {selCat || 'All Categories'} · {selReg || 'All Regions'} · {duration.charAt(0).toUpperCase() + duration.slice(1)} Duration
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: C.blue, background: `${C.blue}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
-              {interval.toUpperCase()} INTERVAL
-            </span>
+
+          {/* Quick-toggle Segmented Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', background: C.surface2, borderRadius: 8, padding: 3, border: `1px solid ${C.border}` }}>
+              {[
+                { id: 'daily', label: 'Daily' },
+                { id: 'weekly', label: 'Weekly' },
+                { id: 'monthly', label: 'Monthly' },
+                { id: 'quarterly', label: 'Quarterly' },
+                { id: 'yearly', label: 'Yearly' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setDuration(tab.id as ForecastInterval)}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: 12,
+                    borderRadius: 6,
+                    fontWeight: duration === tab.id ? 600 : 400,
+                    background: duration === tab.id ? C.blue : 'transparent',
+                    color: duration === tab.id ? '#FFFFFF' : C.textMuted,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             <span style={{ fontSize: 11, color: C.purple, background: `${C.purple}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
               {modelType.toUpperCase()} INFERENCE
             </span>
           </div>
         </div>
         
-        {loading ? <Skeleton h={340} /> : (
+        {loading || predsLoading ? (
+          <div style={{ padding: '60px 0', textAlign: 'center' }}>
+            <Skeleton h={280} />
+            <p style={{ color: C.textMuted, fontSize: 13, marginTop: 16 }}>
+              {predsLoading ? `Generating TFT demand predictions for ${selCat} in ${selReg} (${duration})...` : 'Loading demand data...'}
+            </p>
+          </div>
+        ) : (
           <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={combinedData}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
@@ -310,7 +418,7 @@ export default function ForecastPage() {
                 dataKey="date" 
                 tick={{ fill: C.textMuted, fontSize: 10 }} 
                 tickLine={false}
-                interval={Math.max(1, Math.floor(combinedData.length / 14))} 
+                interval={Math.max(0, Math.floor(combinedData.length / 14))} 
               />
               <YAxis tick={{ fill: C.textMuted, fontSize: 10 }} tickLine={false} />
               
@@ -319,7 +427,7 @@ export default function ForecastPage() {
                 labelStyle={{ color: C.textPrimary, marginBottom: 4, fontWeight: 600 }}
                 formatter={(val: any, name: string) => {
                   if (Array.isArray(val)) {
-                    return [`${Math.round(val[0]).toLocaleString()} - ${Math.round(val[1]).toLocaleString()} units`, name]
+                    return [`${Math.round(val[0]).toLocaleString()} – ${Math.round(val[1]).toLocaleString()} units`, name]
                   }
                   return [`${Math.round(val).toLocaleString()} units`, name]
                 }}
@@ -330,7 +438,7 @@ export default function ForecastPage() {
               <Line 
                 type="monotone" 
                 dataKey="actual" 
-                name={`Actual Demand (${interval})`} 
+                name={`Historical Actual Demand (${duration})`} 
                 stroke={C.blue} 
                 strokeWidth={2} 
                 dot={false}
@@ -338,11 +446,11 @@ export default function ForecastPage() {
               />
               
               {/* TFT Prediction Line */}
-              {modelType === 'tft' && (
+              {modelType === 'tft' && isPredicting && (
                 <Line 
                   type="monotone" 
                   dataKey="p50" 
-                  name={`TFT Median Forecast (P50)`} 
+                  name={`TFT Predicted Demand (P50)`} 
                   stroke={C.purple} 
                   strokeWidth={2.5} 
                   strokeDasharray="5 5"
@@ -351,11 +459,11 @@ export default function ForecastPage() {
               )}
               
               {/* Confidence Band (Area) */}
-              {modelType === 'tft' && (
+              {modelType === 'tft' && isPredicting && (
                 <Area 
                   type="monotone" 
                   dataKey="confidenceBand" 
-                  name="10th-90th Quantile Uncertainty" 
+                  name="10th–90th Quantile Uncertainty" 
                   stroke="none" 
                   fill={C.purple} 
                   fillOpacity={0.16} 
@@ -364,64 +472,82 @@ export default function ForecastPage() {
             </ComposedChart>
           </ResponsiveContainer>
         )}
+
+        {/* Informative Guidance Banner when category/region not selected */}
+        {!isPredicting && (
+          <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Info size={16} color={C.warning} />
+            <span style={{ fontSize: 13, color: C.textSecondary }}>
+              Showing historical {duration} actual demand. <strong>Select a category and region</strong> in the filters above to activate TFT predictive modeling.
+            </span>
+          </div>
+        )}
       </GlassCard>
 
       {/* Forecast Breakdown Table */}
-      {modelType === 'tft' && tftPreds.length > 0 && (
+      {modelType === 'tft' && isPredicting && (
         <GlassCard style={{ padding: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
             <div>
               <h3 style={{ color: C.textPrimary, fontSize: 15, fontWeight: 600, margin: 0 }}>
-                {interval.charAt(0).toUpperCase() + interval.slice(1)} Forecast Table
+                {duration.charAt(0).toUpperCase() + duration.slice(1)} Forecast Table — {selCat} ({selReg})
               </h3>
               <p style={{ color: C.textMuted, fontSize: 12, margin: '4px 0 0' }}>
                 Multi-horizon predicted demand quantiles for upcoming {horizonLabel}
               </p>
             </div>
-            <span style={{ fontSize: 12, color: C.teal, background: `${C.teal}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
-              {tftPreds.length} Periods Ahead
-            </span>
+            {tftPreds.length > 0 && (
+              <span style={{ fontSize: 12, color: C.teal, background: `${C.teal}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+                {tftPreds.length} Periods Ahead
+              </span>
+            )}
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMuted, textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '10px 12px' }}>Period</th>
-                  <th style={{ padding: '10px 12px' }}>P10 (Conservative)</th>
-                  <th style={{ padding: '10px 12px' }}>P50 (Median Forecast)</th>
-                  <th style={{ padding: '10px 12px' }}>P90 (Optimistic Buffer)</th>
-                  <th style={{ padding: '10px 12px' }}>Uncertainty Range</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tftPreds.map((p, idx) => {
-                  const range = Math.round(p.p90 - p.p10)
-                  return (
-                    <tr key={idx} style={{ borderBottom: `1px solid ${C.border}40`, color: C.textSecondary }}>
-                      <td style={{ padding: '12px', fontWeight: 600, color: C.textPrimary }}>
-                        {formatIntervalDate(p.date, interval)}
-                      </td>
-                      <td style={{ padding: '12px', color: C.textMuted }}>
-                        {Math.round(p.p10).toLocaleString()} units
-                      </td>
-                      <td style={{ padding: '12px', color: C.purple, fontWeight: 600, fontSize: 14 }}>
-                        {Math.round(p.p50).toLocaleString()} units
-                      </td>
-                      <td style={{ padding: '12px', color: C.blue }}>
-                        {Math.round(p.p90).toLocaleString()} units
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ fontSize: 11, background: `${C.purple}20`, color: C.purple, padding: '3px 8px', borderRadius: 4, fontWeight: 500 }}>
-                          ±{(range / 2).toLocaleString()} units
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          {tftPreds.length > 0 ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMuted, textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.05em' }}>
+                    <th style={{ padding: '10px 12px' }}>Period</th>
+                    <th style={{ padding: '10px 12px' }}>P10 (Conservative)</th>
+                    <th style={{ padding: '10px 12px' }}>P50 (Median Forecast)</th>
+                    <th style={{ padding: '10px 12px' }}>P90 (Optimistic Buffer)</th>
+                    <th style={{ padding: '10px 12px' }}>Uncertainty Range</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tftPreds.map((p, idx) => {
+                    const range = Math.round(p.p90 - p.p10)
+                    return (
+                      <tr key={idx} style={{ borderBottom: `1px solid ${C.border}40`, color: C.textSecondary }}>
+                        <td style={{ padding: '12px', fontWeight: 600, color: C.textPrimary }}>
+                          {formatIntervalDate(p.date, duration)}
+                        </td>
+                        <td style={{ padding: '12px', color: C.textMuted }}>
+                          {Math.round(p.p10).toLocaleString()} units
+                        </td>
+                        <td style={{ padding: '12px', color: C.purple, fontWeight: 600, fontSize: 14 }}>
+                          {Math.round(p.p50).toLocaleString()} units
+                        </td>
+                        <td style={{ padding: '12px', color: C.blue }}>
+                          {Math.round(p.p90).toLocaleString()} units
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{ fontSize: 11, background: `${C.purple}20`, color: C.purple, padding: '3px 8px', borderRadius: 4, fontWeight: 500 }}>
+                            ±{(range / 2).toLocaleString()} units
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding: '32px 0', textAlign: 'center', color: C.textMuted }}>
+              <p style={{ margin: 0, fontSize: 14 }}>No prediction records available for this filter combination.</p>
+            </div>
+          )}
         </GlassCard>
       )}
     </div>
