@@ -57,18 +57,23 @@ export const fetchTopCategories   = () => apiFetch('/api/dashboard/top-categorie
 export const fetchRegionalDemand  = () => apiFetch('/api/dashboard/regional-demand')
 
 // ── Forecast ─────────────────────────────────────────────────────────────────
-export const fetchDemandSeries = (category?: string, region?: string, limit = 60) =>
+export const fetchDemandSeries = (category?: string, region?: string, limit?: number, interval = 'daily') =>
   apiFetch('/api/forecast/demand-series', {
     ...(category ? { category } : {}),
     ...(region   ? { region   } : {}),
-    limit: String(limit),
+    ...(limit    ? { limit: String(limit) } : {}),
+    interval,
   })
 export const fetchForecastCategories  = () => apiFetch<string[]>('/api/forecast/categories')
 export const fetchForecastRegions     = () => apiFetch<string[]>('/api/forecast/regions')
 export const fetchModelMetrics        = () => apiFetch('/api/forecast/model-metrics')
 export const fetchModelComparison     = () => apiFetch('/api/forecast/model-comparison')
-export const fetchTftPredict          = (category: string, region: string) =>
-  apiFetch('/api/forecast/tft-predict', { category, region })
+export const fetchTftPredict          = (category?: string, region?: string, interval = 'daily') =>
+  apiFetch('/api/forecast/tft-predict', {
+    ...(category ? { category } : {}),
+    ...(region   ? { region   } : {}),
+    interval,
+  })
 
 // ── Inventory ────────────────────────────────────────────────────────────────
 export const fetchInventorySummary      = () => apiFetch('/api/inventory/summary')
@@ -152,9 +157,14 @@ export const fetchDecisionsLog          = () => apiFetch('/api/decisions/log')
 export const fetchDecisionsSummary      = () => apiFetch('/api/decisions/summary')
 
 // ── Alerts ───────────────────────────────────────────────────────────────────
-export const fetchActiveAlerts          = () => apiFetch('/api/alerts/active')
-export const fetchAlertsSummary         = () => apiFetch('/api/alerts/summary')
-export const fetchAlertsHistory         = () => apiFetch('/api/alerts/history')
+export const fetchActiveAlerts      = () => apiFetch('/api/alerts/active')
+export const fetchAlertsSummary     = () => apiFetch('/api/alerts/summary')
+export const fetchAlertsHistory     = () => apiFetch('/api/alerts/all')
+export const markAlertAsRead        = (id: number) => apiPost(`/api/alerts/${id}/read`)
+export const markAllAlertsRead      = () => apiPost('/api/alerts/read-all')
+export const resolveAlert           = (id: number) => apiPost(`/api/alerts/${id}/resolve`)
+export const clearAllAlerts         = () => apiPost('/api/alerts/clear-all')
+export const syncAlerts             = () => apiPost('/api/alerts/sync')
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 export const fetchAdminSystemHealth     = () => apiFetch('/api/admin/system-health')

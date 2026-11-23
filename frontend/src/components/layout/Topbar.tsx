@@ -16,22 +16,26 @@ import {
   User,
   Settings,
   RefreshCw,
+  Check,
+  X,
+  ExternalLink,
 } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import { selectUser, logout } from '@/lib/store/authSlice'
 import { signOut } from 'next-auth/react'
 import {
-  selectNotifications,
-  selectUnreadCount,
-  markAllNotificationsRead,
   toggleCopilot,
   setCommandPaletteOpen,
 } from '@/lib/store/uiSlice'
-import { selectAiAlerts } from '@/lib/store/alertsSlice'
 import { getRoleLabel } from '@/lib/auth/permissions'
 import { toast } from 'sonner'
-import type { Notification } from '@/lib/store/uiSlice'
-import type { SystemAlert } from '@/lib/store/alertsSlice'
+import {
+  fetchActiveAlerts,
+  markAlertAsRead,
+  markAllAlertsRead,
+  resolveAlert,
+  clearAllAlerts,
+} from '@/lib/api/client'
 
 // Build breadcrumb from pathname
 function useBreadcrumb() {
@@ -71,13 +75,6 @@ function useBreadcrumb() {
   return crumbs
 }
 
-function AlertIcon({ severity }: { severity: SystemAlert['severity'] }) {
-  if (severity === 'critical') return <AlertCircle size={14} style={{ color: '#EF4444' }} />
-  if (severity === 'warning') return <AlertTriangle size={14} style={{ color: '#F59E0B' }} />
-  if (severity === 'success') return <CheckCircle2 size={14} style={{ color: '#10B981' }} />
-  return <Info size={14} style={{ color: '#3B8EE8' }} />
-}
-
 function LiveClock() {
   const [time, setTime] = useState('')
 
@@ -108,13 +105,95 @@ export function Topbar() {
   const dispatch = useDispatch()
   const router = useRouter()
   const user = useSelector(selectUser)
-  const notifications = useSelector(selectNotifications)
-  const unreadCount = useSelector(selectUnreadCount)
-  const aiAlerts = useSelector(selectAiAlerts)
   const crumbs = useBreadcrumb()
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [liveAlerts, setLiveAlerts] = useState<any[]>([])
+  const [liveUnreadCount, setLiveUnreadCount] = useState<number>(0)
+
+  const refreshAlerts = useCallback(async () => {
+    try {
+      const res: any = await fetchActiveAlerts()
+      if (res && Array.isArray(res.alerts)) {
+        setLiveAlerts(res.alerts)
+        setLiveUnreadCount(
+          typeof res.unread_count === 'number'
+            ? res.unread_count
+            : res.alerts.filter((a: any) => !a.read).length
+        )
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    refreshAlerts()
+    const timer = setInterval(refreshAlerts, 15000)
+    return () => clearInterval(timer)
+  }, [refreshAlerts])
+
+  const handleMarkAsRead = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await markAlertAsRead(id)
+      setLiveAlerts(prev => prev.map(a => a.id === id ? { ...a, read: true } : a))
+      setLiveUnreadCount(prev => Math.max(0, prev - 1))
+      toast.success('Notification marked as read')
+    } catch {
+      toast.error('Failed to update notification')
+    }
+  }
+
+  const handleResolveAlert = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await resolveAlert(id)
+      setLiveAlerts(prev => prev.filter(a => a.id !== id))
+      setLiveUnreadCount(prev => Math.max(0, prev - 1))
+      toast.success('Alert resolved and dismissed')
+    } catch {
+      toast.error('Failed to resolve alert')
+    }
+  }
+
+  const handleMarkAllRead = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await markAllAlertsRead()
+      setLiveAlerts(prev => prev.map(a => ({ ...a, read: true })))
+      setLiveUnreadCount(0)
+      toast.success('All notifications marked as read')
+    } catch {
+      toast.error('Failed to mark all as read')
+    }
+  }
+
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      await clearAllAlerts()
+      setLiveAlerts([])
+      setLiveUnreadCount(0)
+      toast.success('All active alerts cleared')
+    } catch {
+      toast.error('Failed to clear alerts')
+    }
+  }
+
+  const getAlertBadge = (alert: any) => {
+    const sev = String(alert.severity || '').toUpperCase()
+    const type = String(alert.type || '').toUpperCase()
+    if (type === 'CRITICAL_STOCK' || sev === 'CRITICAL') {
+      return { label: 'Critical Stock', color: '#EF4444', bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.3)' }
+    }
+    if (type === 'LOW_STOCK' || sev === 'HIGH') {
+      return { label: 'Low Stock', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)', border: 'rgba(245,158,11,0.3)' }
+    }
+    if (type === 'REPLENISHMENT_REQUIRED' || sev === 'MEDIUM') {
+      return { label: 'Stock Replenishment Required', color: '#3B8EE8', bg: 'rgba(59,142,232,0.15)', border: 'rgba(59,142,232,0.3)' }
+    }
+    return { label: alert.category || 'System Alert', color: '#10B981', bg: 'rgba(16,185,129,0.15)', border: 'rgba(16,185,129,0.3)' }
+  }
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -149,8 +228,6 @@ export function Topbar() {
     toast.success('Signed out successfully')
     await signOut({ redirect: true, callbackUrl: '/login' })
   }
-
-  const recentAlerts = aiAlerts.slice(0, 5)
 
   return (
     <header
@@ -219,16 +296,17 @@ export function Topbar() {
       <div className="relative" onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => { setNotifOpen(!notifOpen); setUserMenuOpen(false) }}
-          className="relative p-2 rounded-lg transition-colors"
-          style={{ color: '#64748B' }}
+          className="relative p-2 rounded-lg transition-colors hover:bg-slate-800/60"
+          style={{ color: liveUnreadCount > 0 ? '#F1F5F9' : '#64748B' }}
+          title="Notifications"
         >
           <Bell size={18} />
-          {unreadCount > 0 && (
+          {liveUnreadCount > 0 && (
             <span
-              className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[10px] font-bold rounded-full flex items-center justify-center"
+              className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse"
               style={{ background: '#EF4444', color: 'white' }}
             >
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {liveUnreadCount > 99 ? '99+' : liveUnreadCount}
             </span>
           )}
         </button>
@@ -240,53 +318,137 @@ export function Topbar() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.95 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50"
+              className="absolute right-0 top-full mt-2 w-96 rounded-xl overflow-hidden z-50 shadow-2xl"
               style={{
                 background: '#1C2537',
-                border: '1px solid rgba(59,142,232,0.15)',
-                boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
+                border: '1px solid rgba(59,142,232,0.2)',
+                boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
               }}
             >
+              {/* Header */}
               <div
                 className="flex items-center justify-between px-4 py-3"
-                style={{ borderBottom: '1px solid #1E2D45' }}
+                style={{ borderBottom: '1px solid #1E2D45', background: 'rgba(17,24,39,0.7)' }}
               >
-                <span className="text-sm font-semibold text-white">Notifications</span>
-                <button
-                  onClick={() => dispatch(markAllNotificationsRead())}
-                  className="text-xs transition-colors"
-                  style={{ color: '#3B8EE8' }}
-                >
-                  Mark all read
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-white">Notifications</span>
+                  {liveUnreadCount > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{ background: 'rgba(239,68,68,0.2)', color: '#EF4444' }}
+                    >
+                      {liveUnreadCount} new
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {liveUnreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs transition-colors hover:underline"
+                      style={{ color: '#3B8EE8' }}
+                      title="Mark all notifications as read"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  {liveAlerts.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      className="text-xs transition-colors hover:underline"
+                      style={{ color: '#94A3B8' }}
+                      title="Clear all notifications"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="max-h-80 overflow-y-auto divide-y" style={{ borderColor: 'rgba(30,45,69,0.4)' }}>
-                {recentAlerts.length === 0 ? (
-                  <div className="py-8 text-center text-sm" style={{ color: '#64748B' }}>
-                    No notifications
+
+              {/* Notification List */}
+              <div className="max-h-96 overflow-y-auto divide-y" style={{ borderColor: 'rgba(30,45,69,0.5)' }}>
+                {liveAlerts.length === 0 ? (
+                  <div className="py-10 text-center text-sm" style={{ color: '#64748B' }}>
+                    <CheckCircle2 size={24} className="mx-auto mb-2 text-emerald-500/60" />
+                    No active notifications
+                    <p className="text-xs text-slate-500 mt-1">All inventory levels are currently healthy</p>
                   </div>
                 ) : (
-                  recentAlerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="px-4 py-3 transition-colors"
-                      style={{ background: alert.acknowledged ? 'transparent' : 'rgba(59,142,232,0.04)' }}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <AlertIcon severity={alert.severity} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-white leading-snug">{alert.title}</p>
-                          <p className="text-xs mt-0.5 leading-relaxed" style={{ color: '#64748B' }}>
-                            {alert.message.slice(0, 80)}…
-                          </p>
-                          <p className="text-[10px] mt-1" style={{ color: '#475569' }}>
-                            {new Date(alert.timestamp).toLocaleTimeString()}
-                          </p>
+                  liveAlerts.slice(0, 8).map((alert) => {
+                    const badge = getAlertBadge(alert)
+                    const isUnread = !alert.read
+                    return (
+                      <div
+                        key={alert.id}
+                        className="px-4 py-3 transition-colors hover:bg-slate-800/40"
+                        style={{ background: isUnread ? 'rgba(59,142,232,0.06)' : 'transparent' }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded"
+                              style={{ background: badge.bg, color: badge.color, border: `1px solid ${badge.border}` }}
+                            >
+                              {badge.label}
+                            </span>
+                            {isUnread && (
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#3B8EE8' }} />
+                            )}
+                          </div>
+                          
+                          {/* Item actions */}
+                          <div className="flex items-center gap-1">
+                            {isUnread && (
+                              <button
+                                onClick={(e) => handleMarkAsRead(alert.id, e)}
+                                className="p-1 rounded hover:bg-slate-700/60 text-slate-400 hover:text-emerald-400 transition-colors"
+                                title="Mark as read"
+                              >
+                                <Check size={13} />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => handleResolveAlert(alert.id, e)}
+                              className="p-1 rounded hover:bg-slate-700/60 text-slate-400 hover:text-rose-400 transition-colors"
+                              title="Resolve & dismiss alert"
+                            >
+                              <X size={13} />
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Title */}
+                        <p className="text-sm font-medium text-white leading-snug mt-1.5">
+                          {alert.title}
+                        </p>
+
+                        {/* Description (Stock, Reorder Level, Region) */}
+                        <p className="text-xs mt-1 leading-relaxed" style={{ color: '#94A3B8' }}>
+                          {alert.description}
+                        </p>
+
+                        {/* Timestamp */}
+                        <p className="text-[10px] mt-1.5" style={{ color: '#64748B' }}>
+                          {alert.created_at ? new Date(alert.created_at).toLocaleString() : 'Just now'}
+                        </p>
                       </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
+              </div>
+
+              {/* Footer */}
+              <div
+                className="px-4 py-2.5 text-center"
+                style={{ borderTop: '1px solid #1E2D45', background: 'rgba(17,24,39,0.7)' }}
+              >
+                <button
+                  onClick={() => { setNotifOpen(false); router.push('/alerts') }}
+                  className="text-xs font-medium flex items-center justify-center gap-1.5 mx-auto transition-colors hover:text-blue-400"
+                  style={{ color: '#3B8EE8' }}
+                >
+                  View all in Alert Center <ExternalLink size={12} />
+                </button>
               </div>
             </motion.div>
           )}

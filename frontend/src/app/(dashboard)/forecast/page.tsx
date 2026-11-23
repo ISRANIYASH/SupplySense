@@ -4,8 +4,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, ComposedChart, Line
 } from 'recharts'
-import { TrendingUp, RefreshCw, Wifi, AlertTriangle, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { TrendingUp, RefreshCw, Wifi, AlertTriangle, ChevronDown, CheckCircle2, Calendar, Layers, BarChart2 } from 'lucide-react'
 import { getApiUrl, formatApiErrorMessage } from '@/lib/api/config'
+import { fetchDemandSeries, fetchTftPredict } from '@/lib/api/client'
 import { ApiAlertBanner } from '@/components/common/ApiAlertBanner'
 
 const C = {
@@ -13,6 +14,8 @@ const C = {
   blue: '#3B8EE8', teal: '#00D4AA', warning: '#F59E0B', danger: '#EF4444',
   success: '#10B981', purple: '#8B5CF6', textPrimary: '#F1F5F9', textSecondary: '#CBD5E1', textMuted: '#64748B',
 } as const
+
+type ForecastInterval = 'daily' | 'weekly' | 'monthly' | 'quarterly'
 
 function GlassCard({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
@@ -50,6 +53,27 @@ function Select({ value, onChange, options, label }: { value: string; onChange: 
   )
 }
 
+function formatIntervalDate(dateStr: string, interval: ForecastInterval) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return dateStr
+
+  if (interval === 'daily') {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+  if (interval === 'weekly') {
+    return `Wk of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+  }
+  if (interval === 'monthly') {
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  }
+  if (interval === 'quarterly') {
+    const q = Math.floor(d.getMonth() / 3) + 1
+    return `Q${q} ${d.getFullYear()}`
+  }
+  return dateStr
+}
+
 export default function ForecastPage() {
   const [series, setSeries]         = useState<{ date: string; actual_demand: number }[]>([])
   const [categories, setCategories] = useState<string[]>([])
@@ -58,6 +82,7 @@ export default function ForecastPage() {
   
   const [selCat, setSelCat]         = useState('')
   const [selReg, setSelReg]         = useState('')
+  const [interval, setIntervalVal]  = useState<ForecastInterval>('daily')
   const [loading, setLoading]       = useState(true)
   const [error, setError]           = useState<string | null>(null)
   const [modelType, setModelType]   = useState<'lstm' | 'tft'>('tft')
@@ -65,31 +90,16 @@ export default function ForecastPage() {
 
   const loadSeries = useCallback(() => {
     setLoading(true)
-    const params = new URLSearchParams({ limit: '60' })
-    if (selCat) params.set('category', selCat)
-    if (selReg) params.set('region', selReg)
-    fetch(getApiUrl(`/api/forecast/demand-series?${params}`))
-      .then(r => {
-        if (!r.ok) throw new Error(`API error ${r.status}: Failed to load demand series`)
-        return r.json()
-      })
-      .then(d => { setSeries(d); setLoading(false); setError(null) })
+    fetchDemandSeries(selCat || undefined, selReg || undefined, undefined, interval)
+      .then((d: any) => { setSeries(Array.isArray(d) ? d : []); setLoading(false); setError(null) })
       .catch((e) => { setError(formatApiErrorMessage(e)); setLoading(false) })
-  }, [selCat, selReg])
+  }, [selCat, selReg, interval])
 
   const loadTftPredictions = useCallback(() => {
-    if (!selCat || !selReg) {
-      setTftPreds([])
-      return
-    }
-    fetch(getApiUrl(`/api/forecast/tft-predict?category=${encodeURIComponent(selCat)}&region=${encodeURIComponent(selReg)}`))
-      .then(r => {
-        if (!r.ok) throw new Error(`API error ${r.status}`)
-        return r.json()
-      })
-      .then(d => setTftPreds(d))
+    fetchTftPredict(selCat || undefined, selReg || undefined, interval)
+      .then((d: any) => setTftPreds(Array.isArray(d) ? d : []))
       .catch(() => setTftPreds([]))
-  }, [selCat, selReg])
+  }, [selCat, selReg, interval])
 
   useEffect(() => {
     Promise.all([
@@ -121,15 +131,17 @@ export default function ForecastPage() {
     }
   }, [loadSeries, modelType, loadTftPredictions])
 
-  // Combine actual and predicted data
+  // Combine actual and predicted data mapped with consistent interval formatting
   let combinedData: any[] = series.map(r => ({
-    date: new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: formatIntervalDate(r.date, interval),
+    rawDate: r.date,
     actual: r.actual_demand,
   }))
 
   if (modelType === 'tft' && tftPreds.length > 0) {
     const predMapped = tftPreds.map(p => ({
-      date: new Date(p.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      date: formatIntervalDate(p.date, interval),
+      rawDate: p.date,
       p50: p.p50,
       confidenceBand: [p.p10, p.p90]
     }))
@@ -140,13 +152,19 @@ export default function ForecastPage() {
   const mape = activeMetrics?.mape ? `${activeMetrics.mape.toFixed(2)}%` : 'N/A'
   const mae  = activeMetrics?.mae  ? activeMetrics.mae.toFixed(2) : 'N/A'
 
+  const totalHistorical = series.reduce((sum, r) => sum + (r.actual_demand || 0), 0)
+  const totalForecasted = tftPreds.reduce((sum, p) => sum + (p.p50 || 0), 0)
+  const horizonLabel = interval === 'daily' ? '7 Days' : interval === 'weekly' ? '8 Weeks' : interval === 'monthly' ? '6 Months' : '4 Quarters'
+
   return (
     <div style={{ background: C.bg, minHeight: '100vh', padding: '28px 32px', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ color: C.textPrimary, fontSize: 26, fontWeight: 700, margin: 0 }}>Demand Prediction</h1>
-          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>Analyze historical demand and predict future material requirements.</p>
+          <p style={{ color: C.textMuted, fontSize: 13, margin: '4px 0 0' }}>
+            Forecast Analytics with multi-interval aggregation (Daily, Weekly, Monthly, Quarterly) and TFT quantile modeling.
+          </p>
         </div>
         <LiveBadge />
       </div>
@@ -156,7 +174,7 @@ export default function ForecastPage() {
       {/* Comparison Banner */}
       {comp && comp.tft && comp.tft.mape && comp.lstm && comp.lstm.mape && (
         <GlassCard style={{ padding: 16, marginBottom: 24, background: 'linear-gradient(90deg, rgba(16,185,129,0.1) 0%, rgba(59,142,232,0.1) 100%)', border: `1px solid ${C.success}40` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <CheckCircle2 color={C.success} size={20} />
               <div>
@@ -185,72 +203,126 @@ export default function ForecastPage() {
         </GlassCard>
       )}
 
-      {/* Model Metrics */}
+      {/* Model Metrics & Volume Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {[
-          { label: 'Test MAPE', value: mape, note: activeMetrics?.trained_on, color: modelType === 'tft' ? C.success : C.warning },
-          { label: 'MAE', value: mae, note: 'Mean Absolute Error', color: C.blue },
-          { label: 'Data Points', value: series.length.toLocaleString(), note: 'Historical window', color: C.teal },
-          { label: 'Architecture', value: modelType.toUpperCase(), note: modelType === 'tft' ? 'Multi-horizon quantile' : 'Point prediction', color: C.purple },
-        ].map(m => (
-          <GlassCard key={m.label} style={{ padding: 18 }}>
-            <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{m.label}</p>
-            <p style={{ color: m.color, fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>{m.value}</p>
-            <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>{m.note}</p>
-          </GlassCard>
-        ))}
+        <GlassCard style={{ padding: 18 }}>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Test MAPE</p>
+          <p style={{ color: modelType === 'tft' ? C.success : C.warning, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{mape}</p>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>{activeMetrics?.trained_on || 'TFT Multi-Horizon'}</p>
+        </GlassCard>
+
+        <GlassCard style={{ padding: 18 }}>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Mean Absolute Error</p>
+          <p style={{ color: C.blue, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{mae}</p>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>Quantile Loss Optimization</p>
+        </GlassCard>
+
+        <GlassCard style={{ padding: 18 }}>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Historical Volume</p>
+          <p style={{ color: C.teal, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{Math.round(totalHistorical).toLocaleString()}</p>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>Across {series.length} {interval} periods</p>
+        </GlassCard>
+
+        <GlassCard style={{ padding: 18 }}>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Projected Demand (P50)</p>
+          <p style={{ color: C.purple, fontSize: 24, fontWeight: 700, margin: '0 0 4px' }}>{Math.round(totalForecasted).toLocaleString()}</p>
+          <p style={{ color: C.textMuted, fontSize: 11, margin: 0 }}>Horizon: {horizonLabel}</p>
+        </GlassCard>
       </div>
 
-      {/* Filters */}
-      <GlassCard style={{ padding: 16, marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ color: C.textMuted, fontSize: 13 }}>Filter:</span>
-        <Select value={selCat} onChange={setSelCat} options={categories} label="Select Category..." />
-        <Select value={selReg} onChange={setSelReg} options={regions} label="Select Region..." />
-        {(selCat || selReg) && (
-          <button
-            onClick={() => { setSelCat(''); setSelReg('') }}
-            style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.textMuted, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <RefreshCw size={12} /> Clear
-          </button>
-        )}
-        {selCat && <span style={{ background: `${C.blue}20`, color: C.blue, padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{selCat}</span>}
-        {selReg && <span style={{ background: `${C.teal}20`, color: C.teal, padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{selReg}</span>}
-        
-        {!selCat || !selReg ? (
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: C.warning }}>Select a category and region to see TFT predictions.</span>
-        ) : null}
+      {/* Filter Toolbar: Time Interval Segmented Control + Category + Region */}
+      <GlassCard style={{ padding: 16, marginBottom: 20, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+        {/* Left side: Segmented Interval Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ color: C.textMuted, fontSize: 13, fontWeight: 600 }}>Aggregation:</span>
+          <div style={{ display: 'flex', background: C.surface2, borderRadius: 8, padding: 4, border: `1px solid ${C.border}`, gap: 4 }}>
+            {[
+              { id: 'daily', label: 'Daily' },
+              { id: 'weekly', label: 'Weekly' },
+              { id: 'monthly', label: 'Monthly' },
+              { id: 'quarterly', label: 'Quarterly' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setIntervalVal(tab.id as ForecastInterval)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  borderRadius: 6,
+                  fontWeight: interval === tab.id ? 600 : 400,
+                  background: interval === tab.id ? C.blue : 'transparent',
+                  color: interval === tab.id ? '#FFFFFF' : C.textMuted,
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Right side: Category and Region filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ color: C.textMuted, fontSize: 13 }}>Filter:</span>
+          <Select value={selCat} onChange={setSelCat} options={categories} label="All Categories" />
+          <Select value={selReg} onChange={setSelReg} options={regions} label="All Regions" />
+          {(selCat || selReg) && (
+            <button
+              onClick={() => { setSelCat(''); setSelReg('') }}
+              style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, padding: '8px 14px', color: C.textMuted, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <RefreshCw size={12} /> Clear
+            </button>
+          )}
+          {selCat && <span style={{ background: `${C.blue}20`, color: C.blue, padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{selCat}</span>}
+          {selReg && <span style={{ background: `${C.teal}20`, color: C.teal, padding: '4px 10px', borderRadius: 6, fontSize: 12 }}>{selReg}</span>}
+        </div>
       </GlassCard>
 
-      {/* Main Chart */}
-      <GlassCard style={{ padding: 24, marginBottom: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      {/* Main Forecast Chart */}
+      <GlassCard style={{ padding: 24, marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <h3 style={{ color: C.textPrimary, fontSize: 15, fontWeight: 600, margin: 0 }}>Forecast Analytics</h3>
+            <h3 style={{ color: C.textPrimary, fontSize: 16, fontWeight: 600, margin: 0 }}>
+              Forecast Analytics ({interval.toUpperCase()})
+            </h3>
             <p style={{ color: C.textMuted, fontSize: 12, margin: '4px 0 0' }}>
-              {selCat || 'All categories'} · {selReg || 'All regions'}
+              Historical demand series and TFT probabilistic quantiles (P10, P50, P90) · {selCat || 'All Categories'} · {selReg || 'All Regions'}
             </p>
           </div>
-          <span style={{ fontSize: 11, color: C.purple, background: `${C.purple}15`, padding: '4px 10px', borderRadius: 6 }}>
-            {modelType.toUpperCase()} Inference
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, color: C.blue, background: `${C.blue}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+              {interval.toUpperCase()} INTERVAL
+            </span>
+            <span style={{ fontSize: 11, color: C.purple, background: `${C.purple}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+              {modelType.toUpperCase()} INFERENCE
+            </span>
+          </div>
         </div>
         
-        {loading ? <Skeleton h={320} /> : (
-          <ResponsiveContainer width="100%" height={320}>
+        {loading ? <Skeleton h={340} /> : (
+          <ResponsiveContainer width="100%" height={340}>
             <ComposedChart data={combinedData}>
               <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
               <XAxis 
                 dataKey="date" 
                 tick={{ fill: C.textMuted, fontSize: 10 }} 
                 tickLine={false}
-                interval={Math.max(1, Math.floor(combinedData.length / 15))} 
+                interval={Math.max(1, Math.floor(combinedData.length / 14))} 
               />
               <YAxis tick={{ fill: C.textMuted, fontSize: 10 }} tickLine={false} />
               
               <Tooltip 
                 contentStyle={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }} 
                 labelStyle={{ color: C.textPrimary, marginBottom: 4, fontWeight: 600 }}
+                formatter={(val: any, name: string) => {
+                  if (Array.isArray(val)) {
+                    return [`${Math.round(val[0]).toLocaleString()} - ${Math.round(val[1]).toLocaleString()} units`, name]
+                  }
+                  return [`${Math.round(val).toLocaleString()} units`, name]
+                }}
               />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
               
@@ -258,7 +330,7 @@ export default function ForecastPage() {
               <Line 
                 type="monotone" 
                 dataKey="actual" 
-                name="Actual Demand" 
+                name={`Actual Demand (${interval})`} 
                 stroke={C.blue} 
                 strokeWidth={2} 
                 dot={false}
@@ -270,11 +342,11 @@ export default function ForecastPage() {
                 <Line 
                   type="monotone" 
                   dataKey="p50" 
-                  name="TFT Forecast (p50)" 
+                  name={`TFT Median Forecast (P50)`} 
                   stroke={C.purple} 
-                  strokeWidth={2} 
+                  strokeWidth={2.5} 
                   strokeDasharray="5 5"
-                  dot={{ r: 3, fill: C.purple, strokeWidth: 0 }} 
+                  dot={{ r: 3.5, fill: C.purple, strokeWidth: 0 }} 
                 />
               )}
               
@@ -283,17 +355,75 @@ export default function ForecastPage() {
                 <Area 
                   type="monotone" 
                   dataKey="confidenceBand" 
-                  name="10th-90th Quantile" 
+                  name="10th-90th Quantile Uncertainty" 
                   stroke="none" 
                   fill={C.purple} 
-                  fillOpacity={0.15} 
+                  fillOpacity={0.16} 
                 />
               )}
-              
             </ComposedChart>
           </ResponsiveContainer>
         )}
       </GlassCard>
+
+      {/* Forecast Breakdown Table */}
+      {modelType === 'tft' && tftPreds.length > 0 && (
+        <GlassCard style={{ padding: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <h3 style={{ color: C.textPrimary, fontSize: 15, fontWeight: 600, margin: 0 }}>
+                {interval.charAt(0).toUpperCase() + interval.slice(1)} Forecast Table
+              </h3>
+              <p style={{ color: C.textMuted, fontSize: 12, margin: '4px 0 0' }}>
+                Multi-horizon predicted demand quantiles for upcoming {horizonLabel}
+              </p>
+            </div>
+            <span style={{ fontSize: 12, color: C.teal, background: `${C.teal}15`, padding: '4px 10px', borderRadius: 6, fontWeight: 600 }}>
+              {tftPreds.length} Periods Ahead
+            </span>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${C.border}`, color: C.textMuted, textTransform: 'uppercase', fontSize: 11, letterSpacing: '0.05em' }}>
+                  <th style={{ padding: '10px 12px' }}>Period</th>
+                  <th style={{ padding: '10px 12px' }}>P10 (Conservative)</th>
+                  <th style={{ padding: '10px 12px' }}>P50 (Median Forecast)</th>
+                  <th style={{ padding: '10px 12px' }}>P90 (Optimistic Buffer)</th>
+                  <th style={{ padding: '10px 12px' }}>Uncertainty Range</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tftPreds.map((p, idx) => {
+                  const range = Math.round(p.p90 - p.p10)
+                  return (
+                    <tr key={idx} style={{ borderBottom: `1px solid ${C.border}40`, color: C.textSecondary }}>
+                      <td style={{ padding: '12px', fontWeight: 600, color: C.textPrimary }}>
+                        {formatIntervalDate(p.date, interval)}
+                      </td>
+                      <td style={{ padding: '12px', color: C.textMuted }}>
+                        {Math.round(p.p10).toLocaleString()} units
+                      </td>
+                      <td style={{ padding: '12px', color: C.purple, fontWeight: 600, fontSize: 14 }}>
+                        {Math.round(p.p50).toLocaleString()} units
+                      </td>
+                      <td style={{ padding: '12px', color: C.blue }}>
+                        {Math.round(p.p90).toLocaleString()} units
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ fontSize: 11, background: `${C.purple}20`, color: C.purple, padding: '3px 8px', borderRadius: 4, fontWeight: 500 }}>
+                          ±{(range / 2).toLocaleString()} units
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </GlassCard>
+      )}
     </div>
   )
 }
